@@ -3,6 +3,7 @@
 **/build/
 android/local.properties
 android/.gradle-dist/
+android/.kotlin/
 
 # .NET / Visual Studio
 **/bin/
@@ -13,4 +14,3 @@ android/.gradle-dist/
 # Local packaging and logs
 artifacts/
 *.log
-

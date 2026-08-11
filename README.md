@@ -29,8 +29,21 @@ windows/                 .NET 8 WinForms tray agent
 protocol/                описание, JSON Schema и примеры protocol v1
 docs/ARCHITECTURE.md      архитектура и сетевые решения
 scripts/                  проверка протокола и настройка fallback
+releases/                 устанавливаемые тестовые сборки по SemVer
 TESTING.md                чек-лист Galaxy A56 / One UI 8.5
 ```
+
+## Версионирование и releases
+
+Текущая версия хранится в корневом файле `VERSION` и автоматически применяется
+к Android и Windows. Стабильные тестовые сборки помечаются аннотированными Git
+tag вида `v0.1.0`, `v0.1.1`, `v0.2.0`.
+
+Каждая реально устанавливаемая версия находится в `releases/vX.Y.Z/` и содержит
+только versioned APK, ZIP самостоятельной Windows x64-сборки и краткий
+`CHANGELOG.md`. Копии исходников туда не кладутся: их история хранится в Git.
+Полный порядок выпуска описан в [docs/VERSIONING.md](docs/VERSIONING.md), а
+обязательные правила для дальнейшей работы — в [AGENTS.md](AGENTS.md).
 
 ## Автоматическая portable-сборка
 
@@ -43,8 +56,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
 
 Скрипт не устанавливает SDK в систему: .NET 8, Microsoft OpenJDK 17 и Android
 SDK сохраняются в соседний каталог `work`. Результат — debug APK,
-самодостаточная папка Windows x64, ZIP и SHA-256 — появляется в соседнем
-каталоге `outputs`.
+самодостаточная папка Windows x64, versioned ZIP и SHA-256 — появляется в
+соседнем каталоге `outputs`.
 
 ## Требования
 

@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <BentleyRemoteVersion>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</BentleyRemoteVersion>
+    <Version>$(BentleyRemoteVersion)</Version>
+    <AssemblyVersion>$(BentleyRemoteVersion).0</AssemblyVersion>
+    <FileVersion>$(BentleyRemoteVersion).0</FileVersion>
+    <InformationalVersion>$(BentleyRemoteVersion)</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+</Project>

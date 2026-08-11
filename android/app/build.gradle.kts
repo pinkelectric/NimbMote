@@ -5,6 +5,14 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+val semanticVersion = rootProject.file("../VERSION").readText().trim()
+val versionParts = semanticVersion.split('.').map(String::toInt)
+require(versionParts.size == 3 && versionParts.all { it in 0..999 }) {
+    "VERSION must contain MAJOR.MINOR.PATCH with components from 0 to 999"
+}
+val semanticVersionCode =
+    versionParts[0] * 1_000_000 + versionParts[1] * 1_000 + versionParts[2] + 1
+
 android {
     namespace = "com.bentley.remote"
     compileSdk = 35
@@ -13,8 +21,8 @@ android {
         applicationId = "com.bentley.remote"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = semanticVersionCode
+        versionName = semanticVersion
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -56,4 +64,3 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
-

@@ -12,12 +12,17 @@ $ProgressPreference = 'SilentlyContinue'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $outputsRoot = Split-Path -Parent $projectRoot
 $workspaceRoot = Split-Path -Parent $outputsRoot
+$version = (Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'VERSION')).Trim()
+if ($version -notmatch '^\d+\.\d+\.\d+$') {
+    throw "VERSION must contain MAJOR.MINOR.PATCH, got: $version"
+}
+$versionTag = "v$version"
 $workRoot = Join-Path $workspaceRoot 'work'
 $downloadsRoot = Join-Path $workRoot 'downloads'
 $toolchainsRoot = Join-Path $workRoot 'toolchains'
 $gradleUserHome = Join-Path $workRoot 'gradle-user-home'
-$packageRoot = Join-Path $outputsRoot 'BentleyRemote-binaries'
-$packageZip = Join-Path $outputsRoot 'BentleyRemote-binaries.zip'
+$packageRoot = Join-Path $outputsRoot "BentleyRemote-$versionTag-binaries"
+$packageZip = Join-Path $outputsRoot "BentleyRemote-$versionTag-binaries.zip"
 
 $dotnetRoot = Join-Path $toolchainsRoot 'dotnet'
 $jdkExtractRoot = Join-Path $toolchainsRoot 'jdk-17'
@@ -192,7 +197,8 @@ if (-not (Test-Path -LiteralPath $agentExe)) { throw "Windows agent was not foun
 Write-Step 'Packaging binaries and checksums'
 $androidPackage = Join-Path $packageRoot 'android'
 New-Item -ItemType Directory -Force -Path $androidPackage | Out-Null
-Copy-Item -LiteralPath $apkPath -Destination (Join-Path $androidPackage 'BentleyRemote-debug.apk') -Force
+$versionedApkName = "BentleyRemote-$versionTag-debug.apk"
+Copy-Item -LiteralPath $apkPath -Destination (Join-Path $androidPackage $versionedApkName) -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'README.md') -Destination $packageRoot -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'TESTING.md') -Destination $packageRoot -Force
 
@@ -204,6 +210,7 @@ $ErrorActionPreference = $savedErrorActionPreference
 $report = @"
 # Bentley Remote binary build report
 
+- Version: $versionTag
 - Built: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')
 - Windows: win-x64, self-contained, $WindowsConfiguration
 - Android: debug APK, API 35
@@ -231,7 +238,7 @@ $zipHash = (Get-FileHash -LiteralPath $packageZip -Algorithm SHA256).Hash.ToLowe
 Set-Content -LiteralPath "$packageZip.sha256.txt" -Encoding ASCII -Value "$zipHash  $(Split-Path -Leaf $packageZip)"
 
 Write-Host "`nBuild completed." -ForegroundColor Green
-Write-Host "APK:     $(Join-Path $androidPackage 'BentleyRemote-debug.apk')"
+Write-Host "APK:     $(Join-Path $androidPackage $versionedApkName)"
 Write-Host "Agent:   $agentExe"
 Write-Host "Package: $packageZip"
 Write-Host "SHA-256: $zipHash"
