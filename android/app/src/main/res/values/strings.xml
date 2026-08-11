@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Bentley Remote</string>
+    <string name="media_notification_channel_name">Media controls</string>
+    <string name="media_notification_channel_description">Windows media playback controls</string>
 </resources>
-
