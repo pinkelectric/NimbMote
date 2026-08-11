@@ -1,0 +1,7 @@
+{
+  "secretBase64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+  "clientId": "client-123",
+  "timestamp": 1786392000000,
+  "nonce": "dGVzdC1ub25jZS0xMjM0NQ==",
+  "proofBase64": "XHS7AKJ5EByUjHe6uMU5lJy+9jhYJY6vjHeXwPXpl9g="
+}

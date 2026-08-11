@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bentley-remote.local/protocol/v1/envelope.schema.json",
+  "title": "Bentley Remote protocol envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "type", "id", "sentAt", "payload"],
+  "properties": {
+    "version": { "const": 1 },
+    "type": {
+      "type": "string",
+      "enum": [
+        "pair.request", "pair.accept", "pair.reject",
+        "auth.hello", "auth.ok", "auth.error",
+        "state.snapshot", "state.media", "state.volume",
+        "command.media", "command.volume", "command.result",
+        "heartbeat.ping", "heartbeat.pong"
+      ]
+    },
+    "id": { "type": "string", "format": "uuid" },
+    "replyTo": { "type": ["string", "null"], "format": "uuid" },
+    "sentAt": { "type": "integer", "minimum": 0 },
+    "payload": { "type": "object" }
+  }
+}
+

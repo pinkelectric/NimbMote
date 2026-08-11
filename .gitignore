@@ -1,0 +1,16 @@
+# Android / Gradle
+.gradle/
+**/build/
+android/local.properties
+android/.gradle-dist/
+
+# .NET / Visual Studio
+**/bin/
+**/obj/
+.vs/
+*.user
+
+# Local packaging and logs
+artifacts/
+*.log
+

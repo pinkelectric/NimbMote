@@ -1,0 +1,275 @@
+package com.bentley.remote
+
+import android.Manifest
+import android.content.Intent
+import android.graphics.BitmapFactory
+import android.os.Build
+import android.os.Bundle
+import android.provider.Settings
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bentley.remote.data.RemoteRepository
+import com.bentley.remote.model.AppUiState
+import com.bentley.remote.service.BentleyRemoteService
+import java.util.Locale
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        RemoteRepository.initialize(this)
+        BentleyRemoteService.start(this)
+        setContent {
+            val notificationPermission = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission(),
+            ) { }
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                if (Build.VERSION.SDK_INT >= 33) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            MaterialTheme(colorScheme = if (isSystemInDarkThemeCompat()) darkColorScheme() else lightColorScheme()) {
+                BentleyRemoteScreen()
+            }
+        }
+    }
+}
+
+@Composable
+private fun isSystemInDarkThemeCompat(): Boolean = androidx.compose.foundation.isSystemInDarkTheme()
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BentleyRemoteScreen() {
+    val context = LocalContext.current
+    val state by RemoteRepository.state.collectAsStateWithLifecycle()
+    var reverseHost by remember(state.reverseHost) { mutableStateOf(state.reverseHost) }
+    var reverseEnabled by remember(state.reverseEnabled) { mutableStateOf(state.reverseEnabled) }
+
+    Scaffold { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Bentley Remote", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                    Text("Windows media on this phone", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                StatusPill(state.connected)
+            }
+
+            Text(state.connectionLabel, style = MaterialTheme.typography.bodyMedium)
+            MediaCard(state)
+            VolumeCard(state)
+            PairingCard(state)
+
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Fallback: phone connects to Windows", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Use only if One UI blocks incoming connections on the hotspot interface.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Enable fallback", modifier = Modifier.weight(1f))
+                        Switch(checked = reverseEnabled, onCheckedChange = { reverseEnabled = it })
+                    }
+                    OutlinedTextField(
+                        value = reverseHost,
+                        onValueChange = { reverseHost = it },
+                        label = { Text("Windows hotspot IP") },
+                        placeholder = { Text("Example: 192.168.43.123") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Button(
+                        onClick = { RemoteRepository.updateReverse(context, reverseEnabled, reverseHost) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Apply fallback settings") }
+                }
+            }
+
+            OutlinedButton(
+                onClick = { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Open battery optimization settings") }
+            Text(
+                "No audio is played on the phone. Keep the app notification and set Battery → Unrestricted for reliable background reconnection.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusPill(connected: Boolean) {
+    val color = if (connected) Color(0xFF0B7A3E) else Color(0xFF8A4B00)
+    Box(
+        modifier = Modifier.background(color.copy(alpha = 0.14f), RoundedCornerShape(99.dp)).padding(horizontal = 12.dp, vertical = 7.dp),
+    ) {
+        Text(if (connected) "Connected" else "Disconnected", color = color, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun MediaCard(state: AppUiState) {
+    val media = state.media
+    Card {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                val bitmap = remember(media.artwork) {
+                    media.artwork?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
+                }
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = "Artwork",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(92.dp),
+                    )
+                } else {
+                    Box(
+                        Modifier.size(92.dp).background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("▶", fontSize = 30.sp) }
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(media.title, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (media.artist.isNotBlank()) Text(media.artist, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(media.playbackStatus.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            if (media.durationMs != null && media.durationMs > 0) {
+                var position by remember(media.positionMs, media.durationMs) {
+                    mutableFloatStateOf((media.positionMs ?: 0).coerceIn(0, media.durationMs).toFloat())
+                }
+                Slider(
+                    value = position,
+                    onValueChange = { position = it },
+                    onValueChangeFinished = { RemoteRepository.media("seek", positionMs = position.toLong()) },
+                    valueRange = 0f..media.durationMs.toFloat().coerceAtLeast(1f),
+                    enabled = state.connected && media.canSeek,
+                )
+                Row(Modifier.fillMaxWidth()) {
+                    Text(formatTime(position.toLong()), style = MaterialTheme.typography.labelSmall)
+                    Spacer(Modifier.weight(1f))
+                    Text(formatTime(media.durationMs), style = MaterialTheme.typography.labelSmall)
+                }
+            }
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                ControlButton("↶ 10", state.connected && media.canSeek) { RemoteRepository.media("seekBy", offsetMs = -10_000) }
+                ControlButton("⏮", state.connected && media.canPrevious) { RemoteRepository.media("previous") }
+                ControlButton(if (media.isPlaying) "⏸" else "▶", state.connected && media.hasSession) {
+                    RemoteRepository.media(if (media.isPlaying) "pause" else "play")
+                }
+                ControlButton("⏭", state.connected && media.canNext) { RemoteRepository.media("next") }
+                ControlButton("10 ↷", state.connected && media.canSeek) { RemoteRepository.media("seekBy", offsetMs = 10_000) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ControlButton(label: String, enabled: Boolean, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, enabled = enabled, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp)) {
+        Text(label)
+    }
+}
+
+@Composable
+private fun VolumeCard(state: AppUiState) {
+    var volume by remember(state.volume.level) { mutableFloatStateOf(state.volume.level) }
+    Card {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Windows volume", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("${(volume * 100).toInt()}%")
+            }
+            Slider(
+                value = volume,
+                onValueChange = { volume = it },
+                onValueChangeFinished = { RemoteRepository.volume("set", level = volume) },
+                enabled = state.connected,
+            )
+            Button(
+                onClick = { RemoteRepository.volume("toggleMute") },
+                enabled = state.connected,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(if (state.volume.muted) "Unmute Windows" else "Mute Windows") }
+        }
+    }
+}
+
+@Composable
+private fun PairingCard(state: AppUiState) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Secure pairing", fontWeight = FontWeight.SemiBold)
+            if (state.pairedComputer == null) {
+                Text(state.pairingCode, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = 5.sp)
+                Text("Enter this code from the Windows tray menu. It expires after 10 minutes.")
+                OutlinedButton(onClick = { RemoteRepository.resetPairing() }) { Text("Generate new code") }
+            } else {
+                Text("Paired with ${state.pairedComputer}")
+                OutlinedButton(onClick = { RemoteRepository.resetPairing() }) { Text("Forget computer and show new code") }
+            }
+        }
+    }
+}
+
+private fun formatTime(milliseconds: Long): String {
+    val seconds = (milliseconds / 1_000).coerceAtLeast(0)
+    return String.format(Locale.US, "%d:%02d", seconds / 60, seconds % 60)
+}
