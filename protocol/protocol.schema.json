@@ -10,10 +10,10 @@
     "type": {
       "type": "string",
       "enum": [
-        "pair.request", "pair.accept", "pair.reject",
+        "pair.request.v2", "pair.accept.v2", "pair.reject",
         "auth.hello", "auth.ok", "auth.error",
         "state.snapshot", "state.media", "state.volume",
-        "command.media", "command.volume", "command.result",
+        "command.media", "command.volume", "system.action", "command.result",
         "heartbeat.ping", "heartbeat.pong"
       ]
     },
@@ -23,4 +23,3 @@
     "payload": { "type": "object" }
   }
 }
-

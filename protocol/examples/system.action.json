@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "type": "system.action",
+  "id": "056bed49-ad19-4f18-957e-f919fdac97f8",
+  "replyTo": null,
+  "sentAt": 1786392000000,
+  "payload": { "action": "lock" }
+}

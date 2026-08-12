@@ -14,6 +14,8 @@ interface RemoteCommands {
     fun volume(action: String, level: Float? = null, delta: Float? = null)
     fun resetPairing()
     fun updateReverse(enabled: Boolean, host: String)
+    fun beginPairing(code: String)
+    fun systemAction(action: String)
 }
 
 object RemoteRepository {
@@ -47,6 +49,8 @@ object RemoteRepository {
     fun volume(action: String, level: Float? = null, delta: Float? = null) =
         commands?.volume(action, level, delta)
     fun resetPairing() = commands?.resetPairing()
+    fun beginPairing(code: String) = commands?.beginPairing(code)
+    fun systemAction(action: String) = commands?.systemAction(action)
 
     fun updateReverse(context: Context, enabled: Boolean, host: String) {
         context.getSharedPreferences(PreferencesName, Context.MODE_PRIVATE).edit()
@@ -67,5 +71,5 @@ object RemoteRepository {
 
     internal fun mediaState(media: RemoteMediaState) { mutableState.update { it.copy(media = media) } }
     internal fun volumeState(volume: RemoteVolumeState) { mutableState.update { it.copy(volume = volume) } }
+    internal fun commandResult(message: String) { mutableState.update { it.copy(commandResult = message) } }
 }
-

@@ -5,7 +5,6 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import java.security.KeyStore
-import java.security.SecureRandom
 import java.util.UUID
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -24,8 +23,8 @@ class SecretStore(context: Context) {
     val pairedClientName: String? get() = preferences.getString(PairedClientNameKey, null)
     val isPaired: Boolean get() = pairedClientId != null && getSecret() != null
 
-    fun createPairing(clientId: String, clientName: String): ByteArray {
-        val secret = ByteArray(32).also(SecureRandom()::nextBytes)
+    fun savePairing(clientId: String, clientName: String, secret: ByteArray) {
+        require(secret.size == 32) { "Pairing secret must be 32 bytes" }
         val cipher = Cipher.getInstance(Transformation)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
         val encrypted = cipher.doFinal(secret)
@@ -35,7 +34,6 @@ class SecretStore(context: Context) {
             .putString(EncryptedSecretKey, Base64.encodeToString(encrypted, Base64.NO_WRAP))
             .putString(SecretIvKey, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             .commit()
-        return secret
     }
 
     fun getSecret(): ByteArray? {
@@ -90,4 +88,3 @@ class SecretStore(context: Context) {
         const val SecretIvKey = "secret_iv"
     }
 }
-

@@ -8,6 +8,7 @@ import com.bentley.remote.model.RemoteVolumeState
 import com.bentley.remote.protocol.Envelope
 import com.bentley.remote.protocol.ProtocolCodec
 import com.bentley.remote.security.SecretStore
+import com.bentley.remote.security.PairingCrypto
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -49,6 +50,7 @@ class RemoteTransport(
     private val authenticated = ConcurrentHashMap<WebSocket, Boolean>()
     private val seenNonces = ConcurrentHashMap<String, Long>()
     private val outgoingChallenges = ConcurrentHashMap<WebSocket, Pair<Long, String>>()
+    private val socketGate = Any()
     @Volatile private var activeSocket: WebSocket? = null
     @Volatile private var reverseClient: WebSocketClient? = null
     @Volatile private var lastSeenAt = 0L
@@ -56,6 +58,7 @@ class RemoteTransport(
     @Volatile private var reverseHost = ""
     private var reverseJob: Job? = null
     private var heartbeatJob: Job? = null
+    private val discovery = DiscoveryListener(secretStore, scope)
     private var pairingCode = "------"
     private var pairingExpiresAt = 0L
 
@@ -66,8 +69,13 @@ class RemoteTransport(
 
         override fun onClose(connection: WebSocket, code: Int, reason: String, remote: Boolean) {
             authenticated.remove(connection)
-            if (activeSocket === connection) {
-                activeSocket = null
+            val wasActive = synchronized(socketGate) {
+                if (activeSocket === connection) {
+                    activeSocket = null
+                    true
+                } else false
+            }
+            if (wasActive) {
                 RemoteRepository.connection(false, "Disconnected; Windows will reconnect")
             }
         }
@@ -89,6 +97,7 @@ class RemoteTransport(
         refreshPairingCode()
         server.isReuseAddr = true
         server.start()
+        discovery.start()
         reverseJob = scope.launch { reverseLoop() }
         heartbeatJob = scope.launch { heartbeatLoop() }
     }
@@ -97,6 +106,35 @@ class RemoteTransport(
         reverseEnabled = enabled
         reverseHost = host
         if (!enabled) reverseClient?.close()
+    }
+
+    override fun beginPairing(code: String) {
+        if (secretStore.isPaired || code.length != 6 || code.any { !it.isDigit() }) {
+            RemoteRepository.connection(false, "Enter the 6-digit code shown by Windows")
+            return
+        }
+        pairingCode = code
+        pairingExpiresAt = System.currentTimeMillis() + PairingWindowMs
+        RemoteRepository.pairing("SEARCHING", pairingExpiresAt, null)
+        RemoteRepository.connection(false, "Searching for Windows on this LAN…")
+        scope.launch {
+            val candidates = discovery.findBootstrapCandidates(code)
+            if (candidates.isEmpty() && !secretStore.isPaired)
+                RemoteRepository.connection(false, "Windows not found; check the code and network, then retry")
+            else if (!secretStore.isPaired)
+                RemoteRepository.connection(false, "Windows found; waiting for secure pairing…")
+        }
+    }
+
+    override fun systemAction(action: String) {
+        if (action !in SystemActions) {
+            RemoteRepository.commandResult("Action rejected")
+            return
+        }
+        if (send("system.action", buildJsonObject { put("action", action) }))
+            RemoteRepository.commandResult("Request sent: $action")
+        else
+            RemoteRepository.commandResult("No authenticated Windows connection")
     }
 
     override fun resetPairing() {
@@ -129,10 +167,11 @@ class RemoteTransport(
             pairingCode = "PAIRED"
             pairingExpiresAt = 0
         } else {
-            pairingCode = SecureRandom().nextInt(1_000_000).toString().padStart(6, '0')
-            pairingExpiresAt = System.currentTimeMillis() + PairingWindowMs
+            pairingCode = "------"
+            pairingExpiresAt = 0
         }
-        RemoteRepository.pairing(pairingCode, pairingExpiresAt, secretStore.pairedClientName)
+        RemoteRepository.pairing(if (secretStore.isPaired) "PAIRED" else "UNPAIRED",
+            pairingExpiresAt, secretStore.pairedClientName)
     }
 
     private fun handleMessage(connection: WebSocket, text: String, isReverse: Boolean) {
@@ -146,9 +185,9 @@ class RemoteTransport(
             connection.close(1007, exception.message ?: "invalid JSON")
             return
         }
-        lastSeenAt = System.currentTimeMillis()
+        if (authenticated[connection] == true) lastSeenAt = System.currentTimeMillis()
         when (message.type) {
-            "pair.request" -> handlePairRequest(connection, message)
+            "pair.request.v2" -> handlePairRequestV2(connection, message)
             "auth.hello" -> handleAuthHello(connection, message)
             "auth.ok" -> if (isReverse) {
                 val reason = validateAuthOk(connection, message.payload)
@@ -159,10 +198,15 @@ class RemoteTransport(
                 }
             }
             "auth.error" -> RemoteRepository.connection(false, "Authentication rejected by Windows")
-            "heartbeat.ping" -> sendTo(connection, "heartbeat.pong", buildJsonObject {
+            "heartbeat.ping" -> if (authenticated[connection] == true) sendTo(connection, "heartbeat.pong", buildJsonObject {
                 put("nonce", message.payload.string("nonce"))
             }, message.id)
-            "heartbeat.pong" -> Unit
+            "heartbeat.pong" -> if (authenticated[connection] == true) Unit else connection.close(1008, "authentication required")
+            "command.result" -> if (authenticated[connection] == true) {
+                val ok = message.payload.boolean("ok")
+                val error = message.payload.string("error")
+                RemoteRepository.commandResult(if (ok) "Windows accepted the action" else error.ifBlank { "Windows rejected the action" })
+            }
             else -> {
                 if (authenticated[connection] != true) {
                     connection.close(1008, "authentication required")
@@ -180,26 +224,23 @@ class RemoteTransport(
         }
     }
 
-    private fun handlePairRequest(connection: WebSocket, message: Envelope) {
-        val code = message.payload.string("code")
-        if (secretStore.isPaired || code != pairingCode || System.currentTimeMillis() > pairingExpiresAt) {
-            sendTo(connection, "pair.reject", buildJsonObject { put("reason", "invalid or expired code") }, message.id)
+    private fun handlePairRequestV2(connection: WebSocket, message: Envelope) {
+        if (secretStore.isPaired || pairingCode.length != 6 || System.currentTimeMillis() > pairingExpiresAt) {
+            sendTo(connection, "pair.reject", buildJsonObject { put("reason", "pairing window closed") }, message.id)
             return
         }
-        val clientId = message.payload.string("clientId")
-        val clientName = message.payload.string("clientName").ifBlank { "Windows PC" }
-        if (clientId.isBlank()) {
-            sendTo(connection, "pair.reject", buildJsonObject { put("reason", "clientId required") }, message.id)
+        val accepted = try { PairingCrypto.accept(message.payload, pairingCode, secretStore.androidId) }
+        catch (_: Exception) {
+            sendTo(connection, "pair.reject", buildJsonObject { put("reason", "pairing verification failed") }, message.id)
             return
         }
-        val secret = secretStore.createPairing(clientId, clientName)
-        sendTo(connection, "pair.accept", buildJsonObject {
-            put("serverId", secretStore.androidId)
-            put("serverName", android.os.Build.MODEL)
-            put("clientId", clientId)
-            put("secret", Base64.encodeToString(secret, Base64.NO_WRAP))
-        }, message.id)
-        authenticate(connection, "Connected to $clientName")
+        try {
+            sendTo(connection, "pair.accept.v2", accepted.payload, message.id)
+            secretStore.savePairing(accepted.clientId, accepted.clientName, accepted.secret)
+        } finally {
+            accepted.secret.fill(0)
+        }
+        authenticate(connection, "Connected securely to ${accepted.clientName}")
         refreshPairingCode()
     }
 
@@ -226,8 +267,15 @@ class RemoteTransport(
     }
 
     private fun authenticate(connection: WebSocket, label: String) {
-        authenticated[connection] = true
-        activeSocket = connection
+        synchronized(socketGate) {
+            val existing = activeSocket
+            if (existing?.isOpen == true && existing !== connection && authenticated[existing] == true) {
+                connection.close(1008, "another authenticated connection is active")
+                return
+            }
+            authenticated[connection] = true
+            activeSocket = connection
+        }
         lastSeenAt = System.currentTimeMillis()
         RemoteRepository.connection(true, label)
     }
@@ -239,11 +287,13 @@ class RemoteTransport(
         val timestamp = payload["timestamp"]?.jsonPrimitive?.longOrNull ?: return "timestamp required"
         if (abs(System.currentTimeMillis() - timestamp) > 120_000) return "clock outside authentication window"
         val nonce = payload.string("nonce")
-        if (nonce.length < 16 || seenNonces.putIfAbsent(nonce, timestamp) != null) return "replayed nonce"
-        seenNonces.entries.removeIf { it.value < timestamp - 300_000 }
+        if (nonce.length < 16 || seenNonces.containsKey(nonce)) return "replayed nonce"
         val supplied = try { Base64.decode(payload.string("proof"), Base64.NO_WRAP) } catch (_: IllegalArgumentException) { return "malformed proof" }
         val expected = hmac(secret, "$clientId\n$timestamp\n$nonce".toByteArray())
-        return if (MessageDigest.isEqual(supplied, expected)) null else "bad proof"
+        if (!MessageDigest.isEqual(supplied, expected)) return "bad proof"
+        if (seenNonces.putIfAbsent(nonce, timestamp) != null) return "replayed nonce"
+        seenNonces.entries.removeIf { it.value < timestamp - 300_000 }
+        return null
     }
 
     private fun validateAuthOk(connection: WebSocket, payload: JsonObject): String? {
@@ -295,9 +345,13 @@ class RemoteTransport(
         )
     }
 
-    private fun send(type: String, payload: JsonObject) {
+    private fun send(type: String, payload: JsonObject): Boolean {
         val socket = activeSocket
-        if (socket?.isOpen == true && authenticated[socket] == true) sendTo(socket, type, payload)
+        if (socket?.isOpen == true && authenticated[socket] == true) {
+            sendTo(socket, type, payload)
+            return true
+        }
+        return false
     }
 
     private fun sendTo(socket: WebSocket, type: String, payload: JsonObject, replyTo: String? = null) {
@@ -386,6 +440,7 @@ class RemoteTransport(
     }
 
     fun stop() {
+        discovery.stop()
         heartbeatJob?.cancel()
         reverseJob?.cancel()
         reverseClient?.close()
@@ -406,6 +461,7 @@ class RemoteTransport(
         const val PairingWindowMs = 10 * 60 * 1_000L
         const val MaxMessageChars = 1_500_000
         const val MaxArtworkBytes = 512 * 1024
+        val SystemActions = setOf("lock", "sleep", "restart", "shutdown")
     }
 }
 

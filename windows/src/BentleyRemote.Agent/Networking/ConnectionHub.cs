@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.WebSockets;
@@ -16,6 +17,7 @@ internal sealed class ConnectionHub : IAsyncDisposable
     private readonly AgentConfigStore _configStore;
     private readonly CancellationTokenSource _stop = new();
     private readonly ConcurrentDictionary<string, long> _seenNonces = new();
+    private readonly ConcurrentQueue<BootstrapCandidate> _bootstrapCandidates = new();
     private readonly object _peerGate = new();
     private SocketPeer? _activePeer;
     private SocketPeer? _primaryPeer;
@@ -23,6 +25,8 @@ internal sealed class ConnectionHub : IAsyncDisposable
     private Task? _primaryTask;
     private Task? _reverseTask;
     private Task? _heartbeatTask;
+    private BootstrapDiscoveryListener? _bootstrapListener;
+    private PairingWindow? _pairingWindow;
 
     public ConnectionHub(AgentConfigStore configStore) => _configStore = configStore;
 
@@ -36,15 +40,28 @@ internal sealed class ConnectionHub : IAsyncDisposable
 
     public void Start()
     {
+        _bootstrapListener = new BootstrapDiscoveryListener(
+            () => _pairingWindow,
+            candidate => _bootstrapCandidates.Enqueue(candidate),
+            Diagnostic);
+        _bootstrapListener.Start();
         _primaryTask = Task.Run(() => PrimaryReconnectLoopAsync(_stop.Token));
         _reverseTask = Task.Run(() => ReverseServerLoopAsync(_stop.Token));
         _heartbeatTask = Task.Run(() => HeartbeatLoopAsync(_stop.Token));
     }
 
-    public void BeginPairing(string code)
+    public PairingWindow BeginPairing()
     {
-        _pendingPairCode = code.Trim();
-        _ = SendPairRequestToPrimaryAsync();
+        var code = RandomNumberGenerator.GetInt32(1_000_000).ToString("D6", CultureInfo.InvariantCulture);
+        var window = new PairingWindow(
+            _configStore.Current.AgentId,
+            code,
+            DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeMilliseconds());
+        _pendingPairCode = code;
+        _pairingWindow = window;
+        _bootstrapListener?.ResetReplayWindow();
+        RaiseConnection(false, "Pairing window open; enter the code on Android");
+        return window;
     }
 
     public async Task DisconnectAsync()
@@ -71,58 +88,132 @@ internal sealed class ConnectionHub : IAsyncDisposable
         var delaySeconds = 1;
         while (!cancellationToken.IsCancellationRequested)
         {
-            var gateways = GatewayDiscovery.FindIPv4Gateways();
-            if (gateways.Count == 0)
+            if (IsConnected)
             {
-                RaiseConnection(false, "Wi-Fi gateway not found");
-                await DelayAsync(3, cancellationToken);
+                await DelayAsync(1, cancellationToken);
                 continue;
             }
 
-            var connectedThisPass = false;
-            foreach (var gateway in gateways)
+            var candidates = new List<ConnectionCandidate>();
+            var config = _configStore.Current;
+            if (_pairingWindow is { } pairingWindow &&
+                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() > pairingWindow.ExpiresAt)
             {
-                if (cancellationToken.IsCancellationRequested) break;
-                using var socket = new ClientWebSocket();
-                socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(15);
-                using var connectTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                connectTimeout.CancelAfter(TimeSpan.FromSeconds(4));
-                try
-                {
-                    var uri = new Uri($"ws://{gateway}:{AndroidPort}/bentley");
-                    RaiseConnection(false, $"Connecting to phone gateway {gateway}…");
-                    await socket.ConnectAsync(uri, connectTimeout.Token);
-                    connectedThisPass = true;
-                    delaySeconds = 1;
-                    var peer = new SocketPeer(socket, $"Android gateway {gateway}");
-                    lock (_peerGate) _primaryPeer = peer;
-                    await AuthenticateOrPairPrimaryAsync(peer, cancellationToken);
-                    await ReceiveLoopAsync(peer, allowIncomingAuthHello: false, cancellationToken);
-                }
-                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-                {
-                    // Try the next gateway.
-                }
-                catch (WebSocketException)
-                {
-                    // Hotspot may not be up yet; the outer loop backs off and retries.
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    RaiseConnection(false, $"Connection error: {ex.Message}");
-                }
-                finally
-                {
-                    ClearPeer(socket);
-                }
-
-                if (connectedThisPass) break;
+                _pairingWindow = null;
+                _pendingPairCode = null;
+                while (_bootstrapCandidates.TryDequeue(out _)) { }
+                RaiseConnection(false, "Pairing window expired; open a new code from the tray");
+            }
+            while (_bootstrapCandidates.TryDequeue(out var bootstrapCandidate))
+                candidates.Add(new ConnectionCandidate(
+                    bootstrapCandidate.Address,
+                    AndroidPort,
+                    "bootstrap discovery",
+                    bootstrapCandidate.PhoneId));
+            if (config.IsPaired)
+            {
+                if (IPAddress.TryParse(config.LastKnownAddress, out var lastKnown) &&
+                    lastKnown.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                    candidates.Add(new ConnectionCandidate(lastKnown, AndroidPort, "last-known"));
+                candidates.AddRange(GatewayDiscovery.FindIPv4Gateways()
+                    .Select(address => new ConnectionCandidate(address, AndroidPort, "gateway")));
             }
 
-            RaiseConnection(false, "Disconnected; reconnecting automatically");
-            await DelayAsync(delaySeconds, cancellationToken);
+            var attempted = new HashSet<string>(StringComparer.Ordinal);
+            var heldSession = false;
+            foreach (var candidate in candidates)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+                if (!_configStore.Current.IsPaired && candidate.ExpectedPhoneId is null)
+                {
+                    Diagnostic($"{candidate.Path} endpoint {candidate.Address} skipped: bootstrap identity required");
+                    continue;
+                }
+                if (!attempted.Add(candidate.Address.ToString())) continue;
+                heldSession = await ConnectCandidateAsync(candidate, cancellationToken);
+                if (heldSession || IsConnected) break;
+            }
+
+            if (!heldSession && !IsConnected && config.IsPaired && _configStore.GetSecret() is { } secret &&
+                !string.IsNullOrWhiteSpace(config.PhoneId))
+            {
+                RaiseConnection(false, "Searching for paired phone on LAN…");
+                var discovered = await LanDiscovery.DiscoverAsync(
+                    config.AgentId,
+                    config.PhoneId,
+                    secret,
+                    Diagnostic,
+                    cancellationToken);
+                foreach (var endpoint in discovered)
+                {
+                    if (!attempted.Add(endpoint.Address.ToString())) continue;
+                    heldSession = await ConnectCandidateAsync(
+                        new ConnectionCandidate(endpoint.Address, endpoint.Port, "LAN discovery"),
+                        cancellationToken);
+                    if (heldSession || IsConnected) break;
+                }
+            }
+
+            if (heldSession)
+            {
+                delaySeconds = 1;
+                continue;
+            }
+            RaiseDisconnectedStatus("Disconnected; reconnecting automatically");
+            await DelayWithJitterAsync(delaySeconds, cancellationToken);
             delaySeconds = Math.Min(delaySeconds * 2, 10);
         }
+    }
+
+    private async Task<bool> ConnectCandidateAsync(
+        ConnectionCandidate candidate,
+        CancellationToken cancellationToken)
+    {
+        using var socket = new ClientWebSocket();
+        socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+        using var connectTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        connectTimeout.CancelAfter(TimeSpan.FromSeconds(3));
+        try
+        {
+            var uri = new Uri($"ws://{candidate.Address}:{candidate.Port}/bentley");
+            RaiseConnection(false, $"Connecting via {candidate.Path}: {candidate.Address}…");
+            await socket.ConnectAsync(uri, connectTimeout.Token);
+            var peer = new SocketPeer(
+                socket,
+                $"Android {candidate.Path} {candidate.Address}",
+                candidate.Address,
+                candidate.Path,
+                candidate.ExpectedPhoneId);
+            lock (_peerGate) _primaryPeer = peer;
+            await AuthenticateOrPairPrimaryAsync(peer, cancellationToken);
+
+            var receiveTask = ReceiveLoopAsync(peer, allowIncomingAuthHello: false, cancellationToken);
+            await Task.WhenAny(receiveTask, Task.Delay(TimeSpan.FromSeconds(6), cancellationToken));
+            if (!peer.IsAuthenticated && peer.IsOpen)
+            {
+                Diagnostic($"{candidate.Path} endpoint {candidate.Address} rejected: WebSocket authentication timeout");
+                await peer.CloseAsync(WebSocketCloseStatus.PolicyViolation, "authentication timeout", cancellationToken);
+            }
+            await receiveTask;
+            return peer.WasAuthenticated;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            Diagnostic($"{candidate.Path} endpoint {candidate.Address} rejected: connection timeout");
+        }
+        catch (WebSocketException ex)
+        {
+            Diagnostic($"{candidate.Path} endpoint {candidate.Address} rejected: {ex.WebSocketErrorCode}");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Diagnostic($"{candidate.Path} endpoint {candidate.Address} rejected: {ex.Message}");
+        }
+        finally
+        {
+            ClearPeer(socket);
+        }
+        return false;
     }
 
     private async Task ReverseServerLoopAsync(CancellationToken cancellationToken)
@@ -175,7 +266,7 @@ internal sealed class ConnectionHub : IAsyncDisposable
         try
         {
             var webSocketContext = await context.AcceptWebSocketAsync(null);
-            var peer = new SocketPeer(webSocketContext.WebSocket, "Android reverse client");
+            var peer = new SocketPeer(webSocketContext.WebSocket, "Android reverse client", null, "manual fallback");
             await ReceiveLoopAsync(peer, allowIncomingAuthHello: true, cancellationToken);
             ClearPeer(peer.Socket);
             await peer.DisposeAsync();
@@ -196,37 +287,14 @@ internal sealed class ConnectionHub : IAsyncDisposable
         }
         else if (!string.IsNullOrWhiteSpace(_pendingPairCode))
         {
-            await peer.SendAsync(ProtocolCodec.Serialize("pair.request", new
-            {
-                clientId = config.AgentId,
-                clientName = Environment.MachineName,
-                code = _pendingPairCode
-            }), cancellationToken);
+            peer.PairingExchange = PairingCrypto.CreateRequest(config.AgentId, Environment.MachineName, _pendingPairCode);
+            await peer.SendAsync(
+                ProtocolCodec.Serialize("pair.request.v2", peer.PairingExchange.RequestPayload),
+                cancellationToken);
         }
         else
         {
             RaiseConnection(false, "Phone found; enter its pairing code from the tray menu");
-        }
-    }
-
-    private async Task SendPairRequestToPrimaryAsync()
-    {
-        SocketPeer? peer;
-        lock (_peerGate) peer = _primaryPeer;
-        if (peer is not { IsOpen: true } || string.IsNullOrWhiteSpace(_pendingPairCode)) return;
-        var config = _configStore.Current;
-        try
-        {
-            await peer.SendAsync(ProtocolCodec.Serialize("pair.request", new
-            {
-                clientId = config.AgentId,
-                clientName = Environment.MachineName,
-                code = _pendingPairCode
-            }), _stop.Token);
-        }
-        catch (WebSocketException)
-        {
-            // Reconnect loop will send it again.
         }
     }
 
@@ -267,20 +335,35 @@ internal sealed class ConnectionHub : IAsyncDisposable
     {
         switch (message.Type)
         {
-            case "pair.accept":
+            case "pair.accept.v2":
             {
-                if (string.IsNullOrWhiteSpace(_pendingPairCode) || _configStore.Current.IsPaired)
+                if (string.IsNullOrWhiteSpace(_pendingPairCode) || _configStore.Current.IsPaired ||
+                    peer.PairingExchange is null)
                     return true;
-                var clientId = message.Payload.GetProperty("clientId").GetString();
-                if (clientId != _configStore.Current.AgentId) return true;
                 var serverId = message.Payload.GetProperty("serverId").GetString() ?? throw new InvalidDataException();
-                var serverName = message.Payload.GetProperty("serverName").GetString() ?? "Android phone";
-                var secret = Convert.FromBase64String(message.Payload.GetProperty("secret").GetString() ?? "");
-                if (secret.Length != 32) throw new InvalidDataException("Pairing secret must be 32 bytes.");
-                _configStore.CompletePairing(serverId, serverName, secret);
+                if (!string.IsNullOrWhiteSpace(peer.ExpectedPhoneId) &&
+                    !string.Equals(serverId, peer.ExpectedPhoneId, StringComparison.Ordinal))
+                    throw new InvalidDataException("Bootstrap phone identity mismatch.");
+                var secret = PairingCrypto.ValidateAndDecryptAccept(
+                    peer.PairingExchange,
+                    message.Payload,
+                    serverId,
+                    out var serverName);
+                try
+                {
+                    _configStore.CompletePairing(serverId, serverName, secret);
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(secret);
+                }
                 _pendingPairCode = null;
+                _pairingWindow = null;
+                peer.PairingExchange.Dispose();
+                peer.PairingExchange = null;
                 peer.IsAuthenticated = true;
-                SetActivePeer(peer, $"Connected to {serverName}");
+                if (!TrySetActivePeer(peer, $"Connected via {peer.ConnectionPath} to {serverName}"))
+                    await peer.CloseAsync(WebSocketCloseStatus.PolicyViolation, "another authenticated connection is active", cancellationToken);
                 return true;
             }
             case "pair.reject":
@@ -290,7 +373,8 @@ internal sealed class ConnectionHub : IAsyncDisposable
                 if (ValidateAuthOk(peer, message.Payload, out var authOkReason))
                 {
                     peer.IsAuthenticated = true;
-                    SetActivePeer(peer, $"Connected to {_configStore.Current.PhoneName ?? "phone"}");
+                    if (!TrySetActivePeer(peer, $"Connected via {peer.ConnectionPath} to {_configStore.Current.PhoneName ?? "phone"}"))
+                        await peer.CloseAsync(WebSocketCloseStatus.PolicyViolation, "another authenticated connection is active", cancellationToken);
                 }
                 else
                 {
@@ -322,7 +406,8 @@ internal sealed class ConnectionHub : IAsyncDisposable
                     nonce,
                     proof = ComputeProof(secret, config.AgentId, timestamp, nonce)
                 }, message.Id), cancellationToken);
-                SetActivePeer(peer, $"Connected (phone initiated)");
+                if (!TrySetActivePeer(peer, "Connected via manual fallback (phone initiated)"))
+                    await peer.CloseAsync(WebSocketCloseStatus.PolicyViolation, "another authenticated connection is active", cancellationToken);
                 return true;
             }
             case "heartbeat.ping":
@@ -370,9 +455,7 @@ internal sealed class ConnectionHub : IAsyncDisposable
             return false;
         }
         var nonce = GetString(payload, "nonce", "");
-        if (nonce.Length < 16 || !_seenNonces.TryAdd(nonce, timestamp)) { reason = "replayed nonce"; return false; }
-        foreach (var item in _seenNonces.Where(item => item.Value < timestamp - 300_000).ToArray())
-            _seenNonces.TryRemove(item.Key, out _);
+        if (nonce.Length < 16 || _seenNonces.ContainsKey(nonce)) { reason = "replayed nonce"; return false; }
         var suppliedProof = GetString(payload, "proof", "");
         byte[] supplied;
         byte[] expected;
@@ -387,6 +470,9 @@ internal sealed class ConnectionHub : IAsyncDisposable
             return false;
         }
         if (!CryptographicOperations.FixedTimeEquals(supplied, expected)) { reason = "bad proof"; return false; }
+        if (!_seenNonces.TryAdd(nonce, timestamp)) { reason = "replayed nonce"; return false; }
+        foreach (var item in _seenNonces.Where(item => item.Value < timestamp - 300_000).ToArray())
+            _seenNonces.TryRemove(item.Key, out _);
         return true;
     }
 
@@ -446,10 +532,18 @@ internal sealed class ConnectionHub : IAsyncDisposable
         }
     }
 
-    private void SetActivePeer(SocketPeer peer, string status)
+    private bool TrySetActivePeer(SocketPeer peer, string status)
     {
-        lock (_peerGate) _activePeer = peer;
+        lock (_peerGate)
+        {
+            if (_activePeer is { IsOpen: true, IsAuthenticated: true } current && current != peer)
+                return false;
+            _activePeer = peer;
+            peer.WasAuthenticated = true;
+        }
+        if (peer.RemoteAddress is not null) _configStore.SetLastKnownAddress(peer.RemoteAddress.ToString());
         RaiseConnection(true, status);
+        return true;
     }
 
     private void ClearPeer(WebSocket socket)
@@ -474,6 +568,12 @@ internal sealed class ConnectionHub : IAsyncDisposable
         if (!IsConnected) RaiseConnection(false, status);
     }
 
+    private void Diagnostic(string message)
+    {
+        Debug.WriteLine($"[BentleyRemote] {message}");
+        RaiseDisconnectedStatus(message);
+    }
+
     private static string GetString(System.Text.Json.JsonElement element, string property, string fallback) =>
         element.TryGetProperty(property, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String
             ? value.GetString() ?? fallback
@@ -482,6 +582,13 @@ internal sealed class ConnectionHub : IAsyncDisposable
     private static async Task DelayAsync(int seconds, CancellationToken cancellationToken)
     {
         try { await Task.Delay(TimeSpan.FromSeconds(seconds), cancellationToken); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+    }
+
+    private static async Task DelayWithJitterAsync(int seconds, CancellationToken cancellationToken)
+    {
+        var jitterMilliseconds = Random.Shared.Next(0, 501);
+        try { await Task.Delay(TimeSpan.FromSeconds(seconds) + TimeSpan.FromMilliseconds(jitterMilliseconds), cancellationToken); }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
     }
 
@@ -498,6 +605,7 @@ internal sealed class ConnectionHub : IAsyncDisposable
         var tasks = new[] { _primaryTask, _reverseTask, _heartbeatTask }.Where(task => task is not null).Cast<Task>();
         try { await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(2)); }
         catch { /* best-effort shutdown */ }
+        if (_bootstrapListener is not null) await _bootstrapListener.DisposeAsync();
         _stop.Dispose();
     }
 
@@ -505,19 +613,28 @@ internal sealed class ConnectionHub : IAsyncDisposable
     {
         private readonly SemaphoreSlim _sendGate = new(1, 1);
 
-        public SocketPeer(WebSocket socket, string description)
+        public SocketPeer(WebSocket socket, string description, IPAddress? remoteAddress, string connectionPath,
+            string? expectedPhoneId = null)
         {
             Socket = socket;
             Description = description;
+            RemoteAddress = remoteAddress;
+            ConnectionPath = connectionPath;
+            ExpectedPhoneId = expectedPhoneId;
             LastSeenUtc = DateTimeOffset.UtcNow;
         }
 
         public WebSocket Socket { get; }
         public string Description { get; }
+        public IPAddress? RemoteAddress { get; }
+        public string ConnectionPath { get; }
+        public string? ExpectedPhoneId { get; }
         public bool IsAuthenticated { get; set; }
+        public bool WasAuthenticated { get; set; }
         public DateTimeOffset LastSeenUtc { get; set; }
         public long ChallengeTimestamp { get; set; }
         public string? ChallengeNonce { get; set; }
+        public PairingExchange? PairingExchange { get; set; }
         public bool IsOpen => Socket.State == WebSocketState.Open;
 
         public async Task SendAsync(string text, CancellationToken cancellationToken)
@@ -543,9 +660,12 @@ internal sealed class ConnectionHub : IAsyncDisposable
 
         public ValueTask DisposeAsync()
         {
+            PairingExchange?.Dispose();
             Socket.Dispose();
             _sendGate.Dispose();
             return ValueTask.CompletedTask;
         }
     }
+
+    private sealed record ConnectionCandidate(IPAddress Address, int Port, string Path, string? ExpectedPhoneId = null);
 }

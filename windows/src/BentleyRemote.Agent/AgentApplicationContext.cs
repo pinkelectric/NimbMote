@@ -72,9 +72,9 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
             if (answer != DialogResult.Yes) return;
             await _coordinator.ForgetPhoneAsync();
         }
-        using var dialog = new PairingDialog();
-        if (dialog.ShowDialog() == DialogResult.OK)
-            _coordinator.BeginPairing(dialog.PairingCode);
+        var pairing = _coordinator.BeginPairing();
+        using var dialog = new PairingDialog(pairing.Code);
+        dialog.ShowDialog();
     }
 
     private static void CopyGatewaysClicked(object? sender, EventArgs e)
@@ -125,4 +125,3 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
         base.Dispose(disposing);
     }
 }
-

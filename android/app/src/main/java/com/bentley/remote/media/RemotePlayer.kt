@@ -106,12 +106,12 @@ class RemotePlayer : SimpleBasePlayer(Looper.getMainLooper()) {
     }
 
     override fun handleIncreaseDeviceVolume(flags: Int): ListenableFuture<*> {
-        RemoteRepository.volume("change", delta = 0.05f)
+        RemoteRepository.volume("change", delta = RelativeVolumeStep)
         return Futures.immediateVoidFuture()
     }
 
     override fun handleDecreaseDeviceVolume(flags: Int): ListenableFuture<*> {
-        RemoteRepository.volume("change", delta = -0.05f)
+        RemoteRepository.volume("change", delta = -RelativeVolumeStep)
         return Futures.immediateVoidFuture()
     }
 
@@ -152,5 +152,9 @@ class RemotePlayer : SimpleBasePlayer(Looper.getMainLooper()) {
 
     private fun onApplicationThread(action: () -> Unit) {
         if (Looper.myLooper() == applicationLooper) action() else mainHandler.post(action)
+    }
+
+    internal companion object {
+        const val RelativeVolumeStep = 0.01f
     }
 }

@@ -8,7 +8,8 @@ internal sealed record AgentConfig(
     string AgentId,
     string? PhoneId,
     string? PhoneName,
-    string? ProtectedSecret)
+    string? ProtectedSecret,
+    string? LastKnownAddress = null)
 {
     public bool IsPaired => !string.IsNullOrWhiteSpace(PhoneId) && !string.IsNullOrWhiteSpace(ProtectedSecret);
 }
@@ -70,11 +71,31 @@ internal sealed class AgentConfigStore
         }
     }
 
+    public void SetLastKnownAddress(string address)
+    {
+        if (!System.Net.IPAddress.TryParse(address, out var parsed) ||
+            parsed.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+            return;
+
+        lock (_gate)
+        {
+            if (string.Equals(_current.LastKnownAddress, parsed.ToString(), StringComparison.Ordinal)) return;
+            _current = _current with { LastKnownAddress = parsed.ToString() };
+            Save(_current);
+        }
+    }
+
     public void ForgetPhone()
     {
         lock (_gate)
         {
-            _current = _current with { PhoneId = null, PhoneName = null, ProtectedSecret = null };
+            _current = _current with
+            {
+                PhoneId = null,
+                PhoneName = null,
+                ProtectedSecret = null,
+                LastKnownAddress = null
+            };
             Save(_current);
         }
     }
@@ -100,4 +121,3 @@ internal sealed class AgentConfigStore
         File.Move(tempPath, _path, true);
     }
 }
-

@@ -4,6 +4,20 @@
 порт Android-сервера: `45892`, путь `/bentley`. Резервный Windows-сервер слушает
 `45893`, путь `/bentley/`.
 
+UDP discovery использует порт `45894`. Для сохранённой пары probe/response
+подписываются общим pairing secret; адрес Android всегда берётся из source
+endpoint подписанного ответа. Для первичного сопряжения UDP используется только
+в явном 10-минутном окне и доказывает знание шестизначного кода. Новый pairing
+secret передаётся внутри AES-256-GCM, ключ выводится через ephemeral ECDH P-256 и
+HKDF-SHA256; код используется для transcript proof и вывода ключа, а
+идентификаторы входят в аутентифицированный transcript.
+
+Bootstrap не считается PAKE: шестизначный код имеет ограниченную энтропию, а
+после аутентификации основной WebSocket остаётся `ws://`. Поэтому v0.2.0
+предназначена для доверенной домашней LAN/hotspot, а не для публичного Wi-Fi.
+Подробный threat review и остаточные риски описаны в
+`docs/SECURITY-v0.2.0.md`.
+
 Каждое сообщение имеет envelope:
 
 ```json
@@ -28,9 +42,9 @@
 
 | Тип | Направление | Payload |
 |---|---|---|
-| `pair.request` | Windows → Android | `clientId`, `clientName`, `code` |
-| `pair.accept` | Android → Windows | `serverId`, `serverName`, `clientId`, `secret` (base64) |
 | `pair.reject` | Android → Windows | `reason` |
+| `pair.request.v2` | Windows → Android | `clientId`, ephemeral `publicKey`, timestamp/nonce, code proof |
+| `pair.accept.v2` | Android → Windows | идентификаторы, ephemeral `publicKey`, AES-GCM ciphertext и transcript proof |
 | `auth.hello` | инициатор → принимающая сторона | `clientId`, `timestamp`, `nonce`, `proof` |
 | `auth.ok` | принимающая сторона → инициатор | `serverId`, `serverName`, исходные `timestamp`/`nonce`, `proof` |
 | `auth.error` | принимающая сторона → инициатор | `reason` |
@@ -39,6 +53,7 @@
 | `state.volume` | Windows → Android | объект `VolumeState` |
 | `command.media` | Android → Windows | `action`, опционально `positionMs`/`offsetMs` |
 | `command.volume` | Android → Windows | `action`, опционально `level`/`delta` |
+| `system.action` | Android → Windows | только allowlist: `lock`, `sleep`, `restart`, `shutdown` |
 | `command.result` | Windows → Android | `ok`, опционально `error` |
 | `heartbeat.ping` | оба направления | `nonce` |
 | `heartbeat.pong` | оба направления | `nonce` |

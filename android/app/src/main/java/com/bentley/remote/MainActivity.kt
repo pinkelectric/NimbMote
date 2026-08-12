@@ -26,12 +26,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -110,6 +115,7 @@ private fun BentleyRemoteScreen() {
             Text(state.connectionLabel, style = MaterialTheme.typography.bodyMedium)
             MediaCard(state)
             VolumeCard(state)
+            ComputerControlCard(state)
             PairingCard(state)
 
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
@@ -252,15 +258,86 @@ private fun VolumeCard(state: AppUiState) {
     }
 }
 
+private data class PowerUiAction(val action: String, val label: String, val confirmation: String?)
+
+private val PrimaryPowerActions = listOf(
+    PowerUiAction("shutdown", "Выключить", "Компьютер будет полностью выключен. Продолжить?"),
+    PowerUiAction("restart", "Перезагрузить", "Компьютер будет перезагружен. Продолжить?"),
+)
+private val SecondaryPowerActions = listOf(
+    PowerUiAction("sleep", "Сон", "Компьютер перейдёт в режим сна. Соединение будет прервано. Продолжить?"),
+    PowerUiAction("lock", "Заблокировать", null),
+)
+
+@Composable
+private fun ComputerControlCard(state: AppUiState) {
+    var pending by remember { mutableStateOf<PowerUiAction?>(null) }
+    var menuExpanded by remember { mutableStateOf(false) }
+    Card {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Управление компьютером", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Box {
+                    IconButton(onClick = { menuExpanded = true }, enabled = state.connected) { Text("⋮", fontSize = 24.sp) }
+                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                        SecondaryPowerActions.forEach { item ->
+                            DropdownMenuItem(
+                                text = { Text(item.label) },
+                                enabled = state.connected,
+                                onClick = {
+                                    menuExpanded = false
+                                    if (item.confirmation == null) RemoteRepository.systemAction(item.action) else pending = item
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PrimaryPowerActions.forEach { item ->
+                    Button(
+                        onClick = { pending = item },
+                        enabled = state.connected,
+                        modifier = Modifier.weight(1f),
+                    ) { Text(item.label) }
+                }
+            }
+            if (!state.connected) Text("Доступно после защищённого подключения", style = MaterialTheme.typography.bodySmall)
+            state.commandResult?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        }
+    }
+    pending?.let { item ->
+        AlertDialog(
+            onDismissRequest = { pending = null },
+            title = { Text(item.label) },
+            text = { Text(item.confirmation.orEmpty()) },
+            confirmButton = { TextButton(onClick = { pending = null; RemoteRepository.systemAction(item.action) }) { Text("Продолжить") } },
+            dismissButton = { TextButton(onClick = { pending = null }) { Text("Отмена") } },
+        )
+    }
+}
+
 @Composable
 private fun PairingCard(state: AppUiState) {
+    var code by remember { mutableStateOf("") }
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Secure pairing", fontWeight = FontWeight.SemiBold)
             if (state.pairedComputer == null) {
-                Text(state.pairingCode, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = 5.sp)
-                Text("Enter this code from the Windows tray menu. It expires after 10 minutes.")
-                OutlinedButton(onClick = { RemoteRepository.resetPairing() }) { Text("Generate new code") }
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { value -> code = value.filter(Char::isDigit).take(6) },
+                    label = { Text("6-digit code from Windows") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Button(
+                    onClick = { RemoteRepository.beginPairing(code) },
+                    enabled = code.length == 6,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Search and pair on this LAN") }
+                Text("Open Pair with phone in the Windows tray first. No IP address is required.")
+                OutlinedButton(onClick = { RemoteRepository.resetPairing() }) { Text("Reset pairing search") }
             } else {
                 Text("Paired with ${state.pairedComputer}")
                 OutlinedButton(onClick = { RemoteRepository.resetPairing() }) { Text("Forget computer and show new code") }

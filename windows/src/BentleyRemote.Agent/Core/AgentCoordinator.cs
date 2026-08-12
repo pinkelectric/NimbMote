@@ -4,6 +4,7 @@ using BentleyRemote.Agent.Media;
 using BentleyRemote.Agent.Networking;
 using BentleyRemote.Agent.Protocol;
 using BentleyRemote.Agent.Security;
+using BentleyRemote.Agent.SystemActions;
 
 namespace BentleyRemote.Agent.Core;
 
@@ -12,6 +13,7 @@ internal sealed class AgentCoordinator : IAsyncDisposable
     private readonly AgentConfigStore _configStore = new();
     private readonly WindowsMediaSessionService _media = new();
     private readonly WindowsVolumeService _volume = new();
+    private readonly SystemActionDispatcher _systemActions = new(new WindowsSystemPowerController());
     private readonly ConnectionHub _hub;
     private readonly object _statusGate = new();
     private string _status = "Starting…";
@@ -49,12 +51,10 @@ internal sealed class AgentCoordinator : IAsyncDisposable
         }
     }
 
-    public void BeginPairing(string code)
+    public PairingWindow BeginPairing()
     {
-        if (code.Length != 6 || code.Any(character => !char.IsDigit(character)))
-            throw new ArgumentException("Pairing code must contain six digits.", nameof(code));
-        SetStatus(false, "Waiting for phone to accept pairing…");
-        _hub.BeginPairing(code);
+        SetStatus(false, "Pairing window open; enter the code on Android");
+        return _hub.BeginPairing();
     }
 
     public async Task ForgetPhoneAsync()
@@ -111,10 +111,25 @@ internal sealed class AgentCoordinator : IAsyncDisposable
                         OptionalFloat(message.Payload, "delta"));
                     break;
                 }
+                case "system.action":
+                {
+                    var action = RequiredString(message.Payload, "action");
+                    ok = _systemActions.TrySchedule(action, TimeSpan.FromMilliseconds(900), succeeded =>
+                    {
+                        if (!succeeded)
+                            _ = _hub.SendAsync("command.result", new
+                            {
+                                ok = false,
+                                error = "Windows could not complete the accepted system action"
+                            }, message.Id);
+                    });
+                    if (!ok) error = "Unknown or disallowed system action";
+                    break;
+                }
                 default:
                     return;
             }
-            if (!ok) error = "Windows session rejected or does not support the command";
+            if (!ok) error ??= "Windows session rejected or does not support the command";
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or ArgumentOutOfRangeException)
         {
@@ -147,4 +162,3 @@ internal sealed class AgentCoordinator : IAsyncDisposable
         await _volume.DisposeAsync();
     }
 }
-

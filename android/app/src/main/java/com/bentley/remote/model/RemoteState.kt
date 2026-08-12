@@ -45,5 +45,5 @@ data class AppUiState(
     val media: RemoteMediaState = RemoteMediaState(),
     val volume: RemoteVolumeState = RemoteVolumeState(),
     val lastError: String? = null,
+    val commandResult: String? = null,
 )
-

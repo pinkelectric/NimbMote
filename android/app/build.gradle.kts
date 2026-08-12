@@ -17,6 +17,18 @@ android {
     namespace = "com.bentley.remote"
     compileSdk = 35
 
+    signingConfigs {
+        getByName("debug") {
+            val portableKeystore = rootProject.file("../../../work/signing/debug.keystore")
+            if (portableKeystore.isFile) {
+                storeFile = portableKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "com.bentley.remote"
         minSdk = 26

@@ -24,6 +24,13 @@ Get-ChildItem -LiteralPath $examplesPath -Filter '*.json' | Where-Object Name -n
 }
 
 $vectorPath = Join-Path $examplesPath 'hmac-test-vector.json'
+$systemExample = Get-Content -Raw -LiteralPath (Join-Path $examplesPath 'system.action.json') | ConvertFrom-Json
+if (@('lock', 'sleep', 'restart', 'shutdown') -notcontains $systemExample.payload.action) {
+    $failures += 'system.action.json: action is outside the fixed allowlist'
+} else {
+    Write-Host 'OK  system.action allowlist'
+}
+
 $vector = Get-Content -Raw -LiteralPath $vectorPath | ConvertFrom-Json
 $secret = [Convert]::FromBase64String($vector.secretBase64)
 $body = [Text.Encoding]::UTF8.GetBytes("$($vector.clientId)`n$($vector.timestamp)`n$($vector.nonce)")
