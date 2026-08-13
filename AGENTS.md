@@ -31,7 +31,9 @@
 1. Для версии, предназначенной для реальной установки и тестирования, создавать
    `releases/vMAJOR.MINOR.PATCH/`.
 2. В подпапке версии допускаются только три готовых файла:
-   versioned debug APK, ZIP Windows x64-сборки и `CHANGELOG.md`.
+   versioned debug APK, нативный Windows Setup EXE и `CHANGELOG.md`. Portable
+   ZIP допустим только как внутренний вход сборки Setup и не является
+   пользовательским release-артефактом.
 3. Не помещать в `releases` исходники, SDK, кэши, `build`, `bin`, `obj` или полную
    копию репозитория.
 4. CHANGELOG должен кратко описывать изменения, статус проверок и SHA-256 обоих

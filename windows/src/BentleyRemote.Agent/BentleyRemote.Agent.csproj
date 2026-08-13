@@ -20,8 +20,4 @@
     <InternalsVisibleTo Include="BentleyRemote.Tests" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="..\..\installer\Install-Or-Update.ps1" Link="Install-Or-Update.ps1"
-          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-  </ItemGroup>
 </Project>

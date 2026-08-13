@@ -40,8 +40,8 @@ TESTING.md                чек-лист Galaxy A56 / One UI 8.5
 tag вида `v0.1.0`, `v0.1.1`, `v0.2.0`.
 
 Каждая реально устанавливаемая версия находится в `releases/vX.Y.Z/` и содержит
-только versioned APK, ZIP самостоятельной Windows x64-сборки и краткий
-`CHANGELOG.md`. Копии исходников туда не кладутся: их история хранится в Git.
+только versioned APK, Windows Setup EXE и краткий `CHANGELOG.md`. Копии
+исходников туда не кладутся: их история хранится в Git.
 Полный порядок выпуска описан в [docs/VERSIONING.md](docs/VERSIONING.md), а
 обязательные правила для дальнейшей работы — в [AGENTS.md](AGENTS.md).
 
@@ -78,28 +78,18 @@ Android-сборка:
 
 ## Установка и обновление Windows-агента
 
-Основной путь установки — не запускать EXE из случайной распакованной папки.
-Распакуйте Windows ZIP текущего релиза и запустите из этой папки:
+Откройте `BentleyRemote-Setup-vX.Y.Z.exe` из текущего релиза двойным щелчком,
+подтвердите стандартный запрос Windows UAC и нажмите **Install** (или
+**Update**). Установщик сам останавливает только Bentley Remote Agent,
+устанавливает актуальную версию в `C:\Program Files\Bentley Remote\`, заменяет
+единственную известную запись автозапуска Bentley Remote и запускает обновлённый
+агент. Автозапуск хранится как одна запись Bentley Remote в HKLM и действует для
+всех пользователей этого компьютера. Повторный запуск Setup EXE новой версии —
+обычный способ обновления.
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Install-Or-Update.ps1
-```
-
-Скрипт не требует администратора. Он останавливает только `BentleyRemote.Agent`,
-копирует файлы в постоянный путь `%LOCALAPPDATA%\BentleyRemote\Agent`, сохраняет
-DPAPI pairing-config в `%LOCALAPPDATA%\BentleyRemote`, обновляет единственную
-запись `HKCU\...\Run\Bentley Remote` на этот постоянный EXE и запускает новую
-версию. Повторный запуск поверх новой ZIP-версии — штатный способ обновления.
-
-Для безопасного просмотра запланированных действий без изменений используйте:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Install-Or-Update.ps1 -WhatIf
-```
-
-В tray выберите **About / diagnostics…**, чтобы увидеть версию и фактический путь
-запущенного EXE. Если там не `%LOCALAPPDATA%\BentleyRemote\Agent\BentleyRemote.Agent.exe`,
-запустите installer из свежего ZIP.
+Pairing/config остаётся в `%LOCALAPPDATA%\BentleyRemote` и поэтому сохраняется
+при обновлении. В tray выберите **About / diagnostics…**, чтобы увидеть версию и
+фактический путь запущенного EXE; он должен указывать на Program Files.
 
 ## Сборка и portable-запуск Windows-агента
 
@@ -120,10 +110,11 @@ dotnet publish .\windows\src\BentleyRemote.Agent\BentleyRemote.Agent.csproj `
   -o .\artifacts\windows-x64
 ```
 
-Portable EXE подходит для диагностики, но не должен быть основным способом
-обновления. Иконка появится в system tray. В меню доступны статус, pairing,
-About/diagnostics, список найденных gateway, автозапуск и выход. Автозапуск
-регистрируется только для постоянной per-user папки после installer.
+Portable build предназначен только для разработки и диагностики, но не является
+способом пользовательского обновления. Иконка появится в system tray. В меню
+доступны статус, pairing, About/diagnostics, список найденных gateway,
+автозапуск и выход. Автозапуск указывает только на установленный EXE в Program
+Files.
 
 ## Сборка APK
 

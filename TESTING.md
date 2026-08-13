@@ -1,4 +1,4 @@
-# Bentley Remote v0.2.1 — Galaxy A56 / One UI 8.5 test plan
+# Bentley Remote v0.2.4 — Galaxy A56 / One UI 8.5 test plan
 
 Этот документ разделяет проверки, которые можно автоматизировать на любой
 машине, и обязательные аппаратные проверки на реальном Samsung Galaxy A56.
@@ -17,28 +17,23 @@
 - [ ] В APK manifest присутствуют INTERNET, POST_NOTIFICATIONS,
   FOREGROUND_SERVICE и FOREGROUND_SERVICE_MEDIA_PLAYBACK.
 - [ ] `protocol/examples/state.snapshot.json` читается обеими реализациями.
-- [ ] Из распакованного Windows ZIP выполнить `Install-Or-Update.ps1 -WhatIf`:
-  выводит `%LOCALAPPDATA%\BentleyRemote\Agent\BentleyRemote.Agent.exe`, версию
-  и одну intended Run-запись, не меняя процессы/реестр.
+- [ ] Windows console tests подтверждают install layout: Program Files path,
+  единственное известное имя Run-value и legacy-value cleanup intent.
 
 ## 1a. Установка/обновление Windows agent — пользовательский тест
 
-> Этот шаг меняет только Bentley Remote в профиле текущего Windows-пользователя:
-> останавливает его процесс, заменяет его managed-файлы и Run-запись. Другие
-> программы, их Run-записи и pairing-config не затрагиваются.
-
-- [ ] Закрыть все старые копии agent из tray. Распаковать Windows ZIP v0.2.3 и
-  выполнить `Install-Or-Update.ps1` без администратора.
-- [ ] Скрипт выводит установленную версию и путь
-  `%LOCALAPPDATA%\BentleyRemote\Agent\BentleyRemote.Agent.exe`.
-- [ ] В tray → About / diagnostics… версия соответствует v0.2.3, а Executable
-  указывает на managed path, не на старую папку v0.1.1/v0.2.x.
-- [ ] В `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` значение
-  `Bentley Remote` указывает только на этот managed EXE. Существующая paired
-  связь сохранена, повторный pairing не требуется.
-- [ ] Повторно запустить installer из той же или следующей версии: создаётся
-  одна Run-запись и один запущенный agent. Перезагрузить Windows и проверить,
-  что запускается эта же версия.
+- [ ] Открыть `BentleyRemote-Setup-v0.2.4.exe` двойным щелчком, подтвердить UAC
+  и нажать **Install** / **Update**. Распаковка или PowerShell не требуются.
+- [ ] После завершения в tray → About / diagnostics… версия соответствует
+  v0.2.4, а Executable указывает на
+  `C:\Program Files\Bentley Remote\BentleyRemote.Agent.exe`, не на старую папку
+  v0.1.1/v0.2.x.
+- [ ] В `HKLM\Software\Microsoft\Windows\CurrentVersion\Run` остаётся только
+  известное значение `Bentley Remote`, указывающее на установленный EXE; старые
+  известные Bentley значения в HKCU удалены.
+  Существующая paired-связь сохраняется. Повторно запустить Setup EXE той же
+  или следующей версии: один Run-value и один запущенный agent; после reboot
+  Windows запускается эта же версия.
 
 ## 2. Установка и базовый UI — реальный A56
 

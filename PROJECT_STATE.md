@@ -2,9 +2,9 @@
 
 ## Current stable-test target
 
-- Work in progress: `v0.2.3` patch release from committed/tagged `v0.2.2`.
+- Latest stable-test release: `v0.2.4`, following committed/tagged `v0.2.3`.
 - Previous releases remain unchanged at their tags; each release directory contains
-  only its APK, ZIP and CHANGELOG.
+  only its APK, Windows Setup EXE and CHANGELOG.
 
 ## v0.2.2 scope
 
@@ -13,14 +13,14 @@
   last-known, gateway and authenticated UDP broadcast retries. Tray diagnostics show
   that distinction and media initialization retries with a bounded delay.
 
-## v0.2.3 scope
+## v0.2.4 scope
 
-- Windows agent has one managed per-user install location:
-  `%LOCALAPPDATA%\BentleyRemote\Agent`. The release ZIP contains
-  `Install-Or-Update.ps1`, which replaces only Bentley Remote files and its Run
-  value, preserving DPAPI pairing state in the parent directory.
+- Windows agent uses a native interactive Inno Setup package. It installs or
+  updates per-machine in `C:\Program Files\Bentley Remote` with one normal UAC
+  elevation, replaces only known Bentley Remote autostart entries, and starts
+  the current agent. DPAPI pairing state remains in `%LOCALAPPDATA%\BentleyRemote`.
 - Tray About/diagnostics reports the binary version and actual executable path.
-- The desktop screenshot card remains deferred to v0.3+; v0.2.3 is a compatible
+- The desktop screenshot card remains deferred to v0.3+; v0.2.4 is a compatible
   install/update reliability patch.
 
 ## v0.2.1 scope
