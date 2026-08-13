@@ -45,6 +45,8 @@ class RemoteTransport(
     private val secretStore: SecretStore,
     private val onMedia: (RemoteMediaState) -> Unit,
     private val onVolume: (RemoteVolumeState) -> Unit,
+    private val onAuthenticated: () -> Unit = {},
+    private val onConfirmedOffline: (String) -> Unit = {},
 ) : RemoteCommands {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val authenticated = ConcurrentHashMap<WebSocket, Boolean>()
@@ -58,6 +60,9 @@ class RemoteTransport(
     @Volatile private var reverseHost = ""
     private var reverseJob: Job? = null
     private var heartbeatJob: Job? = null
+    private var offlineJob: Job? = null
+    private var pendingPowerAction: String? = null
+    private var pendingPowerActionExpiry: Job? = null
     private val discovery = DiscoveryListener(secretStore, scope)
     private var pairingCode = "------"
     private var pairingExpiresAt = 0L
@@ -68,22 +73,14 @@ class RemoteTransport(
         }
 
         override fun onClose(connection: WebSocket, code: Int, reason: String, remote: Boolean) {
-            authenticated.remove(connection)
-            val wasActive = synchronized(socketGate) {
-                if (activeSocket === connection) {
-                    activeSocket = null
-                    true
-                } else false
-            }
-            if (wasActive) {
-                RemoteRepository.connection(false, "Disconnected; Windows will reconnect")
-            }
+            markSocketDisconnected(connection, "Disconnected; Windows will reconnect", confirmed = false)
         }
 
         override fun onMessage(connection: WebSocket, message: String) = handleMessage(connection, message, false)
 
         override fun onError(connection: WebSocket?, exception: Exception) {
             RemoteRepository.connection(false, "Android WebSocket: ${exception.message}", exception.message)
+            connection?.let { markSocketDisconnected(it, "Windows connection failed; retrying", confirmed = false) }
         }
 
         override fun onStart() {
@@ -131,10 +128,18 @@ class RemoteTransport(
             RemoteRepository.commandResult("Action rejected")
             return
         }
-        if (send("system.action", buildJsonObject { put("action", action) }))
+        if (action in ImmediateOfflineActions) pendingPowerAction = action
+        if (send("system.action", buildJsonObject { put("action", action) })) {
+            pendingPowerActionExpiry?.cancel()
+            pendingPowerActionExpiry = scope.launch {
+                delay(PowerActionConfirmationWindowMs)
+                if (pendingPowerAction == action) pendingPowerAction = null
+            }
             RemoteRepository.commandResult("Request sent: $action")
-        else
+        } else {
+            if (pendingPowerAction == action) pendingPowerAction = null
             RemoteRepository.commandResult("No authenticated Windows connection")
+        }
     }
 
     override fun resetPairing() {
@@ -142,6 +147,9 @@ class RemoteTransport(
         authenticated.keys.forEach { it.close(1000, "pairing reset") }
         authenticated.clear()
         activeSocket = null
+        offlineJob?.cancel()
+        RemoteRepository.remoteUnavailable("Pairing reset; enter the new code on Windows")
+        onConfirmedOffline("pairing reset")
         refreshPairingCode()
         RemoteRepository.connection(false, "Pairing reset; enter the new code on Windows")
     }
@@ -206,6 +214,17 @@ class RemoteTransport(
                 val ok = message.payload.boolean("ok")
                 val error = message.payload.string("error")
                 RemoteRepository.commandResult(if (ok) "Windows accepted the action" else error.ifBlank { "Windows rejected the action" })
+                val action = message.payload.stringOrNull("action")
+                if (RemoteOfflinePolicy.shouldReleaseImmediatelyForPowerAction(pendingPowerAction, action, ok)) {
+                    pendingPowerAction = null
+                    pendingPowerActionExpiry?.cancel()
+                    val label = "Windows accepted $action; remote controls released"
+                    RemoteRepository.remoteUnavailable(label)
+                    onConfirmedOffline(label)
+                } else if (action != null && action == pendingPowerAction) {
+                    pendingPowerAction = null
+                    pendingPowerActionExpiry?.cancel()
+                }
             }
             else -> {
                 if (authenticated[connection] != true) {
@@ -276,8 +295,40 @@ class RemoteTransport(
             authenticated[connection] = true
             activeSocket = connection
         }
+        offlineJob?.cancel()
         lastSeenAt = System.currentTimeMillis()
         RemoteRepository.connection(true, label)
+        onAuthenticated()
+    }
+
+    /**
+     * A close notification can be a Wi-Fi handoff.  Keep the remote controls alive for a short,
+     * testable grace period, unless the heartbeat has already proved that the PC is unavailable.
+     */
+    private fun markSocketDisconnected(connection: WebSocket, label: String, confirmed: Boolean) {
+        authenticated.remove(connection)
+        outgoingChallenges.remove(connection)
+        val wasActive = synchronized(socketGate) {
+            if (activeSocket === connection) {
+                activeSocket = null
+                true
+            } else false
+        }
+        if (!wasActive) return
+        RemoteRepository.connection(false, label)
+        scheduleOfflineRelease(label, RemoteOfflinePolicy.releaseDelayMs(confirmed))
+    }
+
+    private fun scheduleOfflineRelease(label: String, delayMs: Long) {
+        offlineJob?.cancel()
+        pendingPowerActionExpiry?.cancel()
+        offlineJob = scope.launch {
+            if (delayMs > 0) delay(delayMs)
+            if (activeSocket == null) {
+                RemoteRepository.remoteUnavailable(label)
+                onConfirmedOffline(label)
+            }
+        }
     }
 
     private fun validateAuth(payload: JsonObject): String? {
@@ -380,9 +431,7 @@ class RemoteTransport(
                 override fun onMessage(message: String) = handleMessage(this, message, true)
 
                 override fun onClose(code: Int, reason: String, remote: Boolean) {
-                    authenticated.remove(this)
-                    outgoingChallenges.remove(this)
-                    if (activeSocket === this) activeSocket = null
+                    markSocketDisconnected(this, "Fallback disconnected; Windows will reconnect", confirmed = false)
                     if (reverseClient === this) reverseClient = null
                 }
 
@@ -430,6 +479,9 @@ class RemoteTransport(
             delay(10_000)
             val socket = activeSocket ?: continue
             if (System.currentTimeMillis() - lastSeenAt > 35_000) {
+                // A hard PC shutdown may not produce TCP FIN/RST.  This is the positive
+                // liveness signal: no authenticated message for the full heartbeat window.
+                markSocketDisconnected(socket, "Windows unavailable (heartbeat timeout)", confirmed = true)
                 socket.close(1001, "heartbeat timeout")
             } else {
                 sendTo(socket, "heartbeat.ping", buildJsonObject {
@@ -443,6 +495,7 @@ class RemoteTransport(
         discovery.stop()
         heartbeatJob?.cancel()
         reverseJob?.cancel()
+        offlineJob?.cancel()
         reverseClient?.close()
         authenticated.keys.forEach { it.close(1001, "service stopping") }
         try { server.stop(1_000) } catch (_: Exception) { }
@@ -461,6 +514,8 @@ class RemoteTransport(
         const val PairingWindowMs = 10 * 60 * 1_000L
         const val MaxMessageChars = 1_500_000
         const val MaxArtworkBytes = 512 * 1024
+        const val PowerActionConfirmationWindowMs = 10_000L
+        val ImmediateOfflineActions = setOf("shutdown", "restart")
         val SystemActions = setOf("lock", "sleep", "restart", "shutdown")
     }
 }

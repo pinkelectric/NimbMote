@@ -11,9 +11,10 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
     private GlobalSystemMediaTransportControlsSessionManager? _manager;
     private Task? _pollTask;
     private MediaState _current = MediaState.Empty;
-    private string? _artworkKey;
+    private readonly ArtworkRevisionTracker _artworkRevision = new();
     private string? _artworkMime;
     private string? _artworkBase64;
+    private GlobalSystemMediaTransportControlsSession? _subscribedSession;
 
     public event Action<MediaState>? StateChanged;
     public MediaState Current => _current;
@@ -21,6 +22,7 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
     public async Task StartAsync()
     {
         _manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+        _manager.CurrentSessionChanged += OnCurrentSessionChanged;
         await RefreshNowAsync();
         _pollTask = Task.Run(() => PollLoopAsync(_stop.Token));
     }
@@ -32,6 +34,7 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
         try
         {
             var session = _manager.GetCurrentSession();
+            SubscribeToSession(session);
             var next = session is null ? MediaState.Empty : await ReadStateAsync(session);
             if (next != _current)
             {
@@ -50,6 +53,41 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
         finally
         {
             _refreshGate.Release();
+        }
+    }
+
+    private void OnCurrentSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender,
+        CurrentSessionChangedEventArgs args) => QueueRefresh();
+
+    private void OnMediaPropertiesChanged(GlobalSystemMediaTransportControlsSession sender,
+        MediaPropertiesChangedEventArgs args) => QueueRefresh();
+
+    private void OnPlaybackInfoChanged(GlobalSystemMediaTransportControlsSession sender,
+        PlaybackInfoChangedEventArgs args) => QueueRefresh();
+
+    private void OnTimelinePropertiesChanged(GlobalSystemMediaTransportControlsSession sender,
+        TimelinePropertiesChangedEventArgs args) => QueueRefresh();
+
+    private void QueueRefresh() => _ = Task.Run(RefreshNowAsync);
+
+    private void SubscribeToSession(GlobalSystemMediaTransportControlsSession? session)
+    {
+        if (ReferenceEquals(_subscribedSession, session)) return;
+        if (_subscribedSession is not null)
+        {
+            _subscribedSession.MediaPropertiesChanged -= OnMediaPropertiesChanged;
+            _subscribedSession.PlaybackInfoChanged -= OnPlaybackInfoChanged;
+            _subscribedSession.TimelinePropertiesChanged -= OnTimelinePropertiesChanged;
+        }
+        _subscribedSession = session;
+        _artworkRevision.Clear();
+        _artworkMime = null;
+        _artworkBase64 = null;
+        if (session is not null)
+        {
+            session.MediaPropertiesChanged += OnMediaPropertiesChanged;
+            session.PlaybackInfoChanged += OnPlaybackInfoChanged;
+            session.TimelinePropertiesChanged += OnTimelinePropertiesChanged;
         }
     }
 
@@ -121,11 +159,22 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
         var relativePosition = timeline.Position - timeline.StartTime;
         long? positionMs = relativePosition >= TimeSpan.Zero ? (long)relativePosition.TotalMilliseconds : null;
 
-        var newArtworkKey = $"{session.SourceAppUserModelId}\n{media.Title}\n{media.Artist}";
-        if (!string.Equals(newArtworkKey, _artworkKey, StringComparison.Ordinal))
+        // Edge intentionally keeps one GSMTC object while changing tabs.  The richer fingerprint
+        // detects the new metadata and clears old art before the new thumbnail is read.
+        var artworkKey = $"{session.SourceAppUserModelId}\n{media.Title}\n{media.Artist}\n{media.AlbumTitle}\n{media.AlbumArtist}\n{durationMs}";
+        var artworkChanged = _artworkRevision.Begin(artworkKey, out var artworkRevision);
+        if (artworkChanged)
         {
-            _artworkKey = newArtworkKey;
-            (_artworkMime, _artworkBase64) = await ReadArtworkAsync(media.Thumbnail);
+            // Publish a metadata-only state first; the following thumbnail update must belong to
+            // this revision and cannot retain artwork from the old Edge tab.
+            _artworkMime = null;
+            _artworkBase64 = null;
+        }
+        if (_artworkBase64 is null)
+        {
+            var artwork = await ReadArtworkAsync(media.Thumbnail);
+            if (_artworkRevision.IsCurrent(artworkRevision))
+                (_artworkMime, _artworkBase64) = artwork;
         }
 
         return new MediaState(
@@ -170,6 +219,8 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _stop.Cancel();
+        if (_manager is not null) _manager.CurrentSessionChanged -= OnCurrentSessionChanged;
+        SubscribeToSession(null);
         if (_pollTask is not null)
         {
             try { await _pollTask; } catch (OperationCanceledException) { }

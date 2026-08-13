@@ -5,6 +5,7 @@ using System.Text.Json;
 using BentleyRemote.Agent.Networking;
 using BentleyRemote.Agent.Security;
 using BentleyRemote.Agent.SystemActions;
+using BentleyRemote.Agent.Media;
 
 var tests = new (string Name, Func<Task> Run)[]
 {
@@ -13,7 +14,8 @@ var tests = new (string Name, Func<Task> Run)[]
     ("bootstrap proof and replay", () => { TestBootstrap(); return Task.CompletedTask; }),
     ("pairing crypto roundtrip", () => { TestPairingCrypto(); return Task.CompletedTask; }),
     ("directed broadcast", () => { TestBroadcast(); return Task.CompletedTask; }),
-    ("loopback discovery responder", TestLoopbackDiscoveryAsync)
+    ("loopback discovery responder", TestLoopbackDiscoveryAsync),
+    ("artwork revision rejects stale metadata", () => { TestArtworkRevision(); return Task.CompletedTask; })
 };
 
 foreach (var test in tests)
@@ -162,6 +164,15 @@ static async Task TestLoopbackDiscoveryAsync()
 static void TestBroadcast() => Require(
     LanDiscovery.GetDirectedBroadcast(IPAddress.Parse("192.168.43.52"), IPAddress.Parse("255.255.255.0"))
         .Equals(IPAddress.Parse("192.168.43.255")), "broadcast calculation failed");
+
+static void TestArtworkRevision()
+{
+    var tracker = new ArtworkRevisionTracker();
+    Require(tracker.Begin("edge\nold", out var oldRevision), "first metadata was not marked new");
+    Require(tracker.Begin("edge\nnew", out var newRevision), "changed Edge metadata was not marked new");
+    Require(!tracker.IsCurrent(oldRevision), "late old thumbnail would be accepted");
+    Require(tracker.IsCurrent(newRevision), "current thumbnail was rejected");
+}
 
 static void Require(bool condition, string message)
 {

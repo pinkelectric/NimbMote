@@ -89,6 +89,7 @@ internal sealed class AgentCoordinator : IAsyncDisposable
     {
         bool ok;
         string? error = null;
+        string? systemAction = null;
         try
         {
             switch (message.Type)
@@ -113,13 +114,14 @@ internal sealed class AgentCoordinator : IAsyncDisposable
                 }
                 case "system.action":
                 {
-                    var action = RequiredString(message.Payload, "action");
-                    ok = _systemActions.TrySchedule(action, TimeSpan.FromMilliseconds(900), succeeded =>
+                    systemAction = RequiredString(message.Payload, "action");
+                    ok = _systemActions.TrySchedule(systemAction, TimeSpan.FromMilliseconds(900), succeeded =>
                     {
                         if (!succeeded)
                             _ = _hub.SendAsync("command.result", new
                             {
                                 ok = false,
+                                action = systemAction,
                                 error = "Windows could not complete the accepted system action"
                             }, message.Id);
                     });
@@ -137,7 +139,12 @@ internal sealed class AgentCoordinator : IAsyncDisposable
             error = ex.Message;
         }
 
-        await _hub.SendAsync("command.result", new { ok, error }, message.Id);
+        await _hub.SendAsync("command.result", new
+        {
+            ok,
+            action = systemAction,
+            error
+        }, message.Id);
     }
 
     private static string RequiredString(JsonElement payload, string name) =>

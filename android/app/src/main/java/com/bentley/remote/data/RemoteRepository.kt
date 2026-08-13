@@ -72,4 +72,20 @@ object RemoteRepository {
     internal fun mediaState(media: RemoteMediaState) { mutableState.update { it.copy(media = media) } }
     internal fun volumeState(volume: RemoteVolumeState) { mutableState.update { it.copy(volume = volume) } }
     internal fun commandResult(message: String) { mutableState.update { it.copy(commandResult = message) } }
+
+    /**
+     * A confirmed remote-PC outage is different from a short reconnect.  Clear cached state here
+     * so a newly-created MediaSession can never re-publish stale Windows metadata or volume.
+     */
+    internal fun remoteUnavailable(label: String) {
+        mutableState.update {
+            it.copy(
+                connected = false,
+                connectionLabel = label,
+                media = RemoteMediaState(),
+                volume = RemoteVolumeState(),
+                commandResult = null,
+            )
+        }
+    }
 }

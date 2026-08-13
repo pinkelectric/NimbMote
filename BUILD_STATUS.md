@@ -1,26 +1,20 @@
-# Build status — v0.1.0 — 2026-08-11
+# Build status — v0.2.1 — 2026-08-13
 
-## Versioned builds completed
+## Versioned build completed
 
-- Canonical version: `VERSION` = `0.1.0`.
-- Android `assembleDebug`: **PASS** (36 tasks, versionCode 1001, versionName
-  0.1.0, APK Signature Scheme v2).
-- Windows `dotnet publish`: **PASS** (Release, win-x64, self-contained,
-  Assembly/File/Product version 0.1.0.0 / 0.1.0.0 / 0.1.0).
-- Protocol examples and HMAC-SHA256 vector: **PASS**.
-- Binary package checksum verification: **PASS** (477 files).
+- Canonical `VERSION`: `0.2.1`.
+- Android: `compileDebugKotlin`, unit tests and `assembleDebug` passed; APK is
+  versionName `0.2.1`, versionCode `2002`, and v2-signed with the same debug
+  certificate as v0.1.1.
+- Windows: Release build and self-contained win-x64 publish passed; ZIP expands
+  to 473 files.
+- Protocol validation passed. Windows safe tests passed, including fake power
+  actions, discovery/pairing security, loopback discovery and artwork revision.
+- No test issued a real lock, sleep, restart or shutdown command.
 
 ## Stable test release
 
-`releases/v0.1.0/` contains exactly:
-
-- `BentleyRemote-v0.1.0-debug.apk`;
-- `BentleyRemote-v0.1.0-windows-x64.zip`;
-- `CHANGELOG.md` with the artifact SHA-256 values.
-
-The release directory contains no source snapshot. Source history is stored in
-Git. The release commit is tagged `v0.1.0` after all repository checks pass.
-
-All portable SDKs and caches remain outside the repository in the workspace
-`work` directory. Hardware behavior still requires the checklist in
-`TESTING.md` on Windows 11 and the Galaxy A56 hotspot.
+`releases/v0.2.1/` contains exactly the versioned debug APK, Windows x64 ZIP
+and CHANGELOG with their SHA-256 hashes. Hardware checks are intentionally left
+to `TESTING.md`; the release commit is tagged `v0.2.1` only after all local
+checks above are complete.

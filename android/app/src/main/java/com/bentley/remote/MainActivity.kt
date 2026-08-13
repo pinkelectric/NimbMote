@@ -36,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -59,6 +60,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.SettingsEthernet
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bentley.remote.data.RemoteRepository
 import com.bentley.remote.model.AppUiState
@@ -94,6 +102,7 @@ private fun BentleyRemoteScreen() {
     val state by RemoteRepository.state.collectAsStateWithLifecycle()
     var reverseHost by remember(state.reverseHost) { mutableStateOf(state.reverseHost) }
     var reverseEnabled by remember(state.reverseEnabled) { mutableStateOf(state.reverseEnabled) }
+    var showConnectionSettings by remember { mutableStateOf(false) }
 
     Scaffold { padding ->
         Column(
@@ -115,34 +124,8 @@ private fun BentleyRemoteScreen() {
             Text(state.connectionLabel, style = MaterialTheme.typography.bodyMedium)
             MediaCard(state)
             VolumeCard(state)
-            ComputerControlCard(state)
+            ComputerControlCard(state, onOpenConnectionSettings = { showConnectionSettings = true })
             PairingCard(state)
-
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Fallback: phone connects to Windows", fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "Use only if One UI blocks incoming connections on the hotspot interface.",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Enable fallback", modifier = Modifier.weight(1f))
-                        Switch(checked = reverseEnabled, onCheckedChange = { reverseEnabled = it })
-                    }
-                    OutlinedTextField(
-                        value = reverseHost,
-                        onValueChange = { reverseHost = it },
-                        label = { Text("Windows hotspot IP") },
-                        placeholder = { Text("Example: 192.168.43.123") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Button(
-                        onClick = { RemoteRepository.updateReverse(context, reverseEnabled, reverseHost) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Apply fallback settings") }
-                }
-            }
 
             OutlinedButton(
                 onClick = { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) },
@@ -155,6 +138,51 @@ private fun BentleyRemoteScreen() {
             )
         }
     }
+    if (showConnectionSettings) {
+        ConnectionSettingsDialog(
+            reverseEnabled = reverseEnabled,
+            reverseHost = reverseHost,
+            onReverseEnabledChanged = { reverseEnabled = it },
+            onReverseHostChanged = { reverseHost = it },
+            onApply = { RemoteRepository.updateReverse(context, reverseEnabled, reverseHost) },
+            onDismiss = { showConnectionSettings = false },
+        )
+    }
+}
+
+@Composable
+private fun ConnectionSettingsDialog(
+    reverseEnabled: Boolean,
+    reverseHost: String,
+    onReverseEnabledChanged: (Boolean) -> Unit,
+    onReverseHostChanged: (String) -> Unit,
+    onApply: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Дополнительные настройки подключения") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Используйте только если One UI блокирует входящее подключение на интерфейсе hotspot. Обычно IP вручную не нужен.")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Телефон подключается к Windows", modifier = Modifier.weight(1f))
+                    Switch(checked = reverseEnabled, onCheckedChange = onReverseEnabledChanged)
+                }
+                OutlinedTextField(
+                    value = reverseHost,
+                    onValueChange = onReverseHostChanged,
+                    label = { Text("IP Windows для аварийного режима") },
+                    placeholder = { Text("Например: 192.168.43.123") },
+                    singleLine = true,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onApply(); onDismiss() }) { Text("Сохранить") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+    )
 }
 
 @Composable
@@ -270,7 +298,7 @@ private val SecondaryPowerActions = listOf(
 )
 
 @Composable
-private fun ComputerControlCard(state: AppUiState) {
+private fun ComputerControlCard(state: AppUiState, onOpenConnectionSettings: () -> Unit) {
     var pending by remember { mutableStateOf<PowerUiAction?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
     Card {
@@ -278,11 +306,21 @@ private fun ComputerControlCard(state: AppUiState) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Управление компьютером", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Box {
-                    IconButton(onClick = { menuExpanded = true }, enabled = state.connected) { Text("⋮", fontSize = 24.sp) }
+                    // Connection settings must remain reachable precisely when the normal path is
+                    // unavailable; only destructive power commands themselves are disabled.
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Ещё")
+                    }
                     DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                         SecondaryPowerActions.forEach { item ->
                             DropdownMenuItem(
                                 text = { Text(item.label) },
+                                leadingIcon = {
+                                    Icon(
+                                        if (item.action == "sleep") Icons.Default.Bedtime else Icons.Default.Lock,
+                                        contentDescription = null,
+                                    )
+                                },
                                 enabled = state.connected,
                                 onClick = {
                                     menuExpanded = false
@@ -290,6 +328,12 @@ private fun ComputerControlCard(state: AppUiState) {
                                 },
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text("Дополнительные настройки подключения") },
+                            leadingIcon = { Icon(Icons.Default.SettingsEthernet, contentDescription = null) },
+                            enabled = true,
+                            onClick = { menuExpanded = false; onOpenConnectionSettings() },
+                        )
                     }
                 }
             }
@@ -299,7 +343,15 @@ private fun ComputerControlCard(state: AppUiState) {
                         onClick = { pending = item },
                         enabled = state.connected,
                         modifier = Modifier.weight(1f),
-                    ) { Text(item.label) }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(
+                                if (item.action == "shutdown") Icons.Default.PowerSettingsNew else Icons.Default.RestartAlt,
+                                contentDescription = null,
+                            )
+                            Text(item.label)
+                        }
+                    }
                 }
             }
             if (!state.connected) Text("Доступно после защищённого подключения", style = MaterialTheme.typography.bodySmall)

@@ -23,41 +23,28 @@ import com.bentley.remote.security.SecretStore
 @OptIn(UnstableApi::class)
 class BentleyRemoteService : MediaSessionService() {
     private val diagnosticsHandler = Handler(Looper.getMainLooper())
-    private lateinit var player: RemotePlayer
     private lateinit var transport: RemoteTransport
+    private var player: RemotePlayer? = null
     private var mediaSession: MediaSession? = null
 
     override fun onCreate() {
         super.onCreate()
         RemoteRepository.initialize(this)
         configureMediaNotification()
-        player = RemotePlayer()
+        activateRemoteControls("service-started")
         transport = RemoteTransport(
             secretStore = SecretStore(this),
             onMedia = {
                 RemoteRepository.mediaState(it)
-                player.updateMedia(it)
+                diagnosticsHandler.post { player?.updateMedia(it) }
             },
             onVolume = {
                 RemoteRepository.volumeState(it)
-                player.updateVolume(it)
+                diagnosticsHandler.post { player?.updateVolume(it) }
             },
+            onAuthenticated = { diagnosticsHandler.post { activateRemoteControls("authenticated") } },
+            onConfirmedOffline = { reason -> diagnosticsHandler.post { deactivateRemoteControls(reason) } },
         )
-        val activityIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val session = MediaSession.Builder(this, player)
-            .setSessionActivity(activityIntent)
-            .build()
-        mediaSession = session
-
-        // This service is started directly rather than through a MediaController. Registering the
-        // session explicitly lets MediaSessionService observe it and publish its MediaNotification.
-        addSession(session)
-        logMediaNotificationState(session, "session-added")
 
         RemoteRepository.bind(transport)
         val settings = RemoteRepository.state.value
@@ -95,8 +82,40 @@ class BentleyRemoteService : MediaSessionService() {
         transport.stop()
         mediaSession?.release()
         mediaSession = null
-        player.release()
+        player?.release()
+        player = null
         super.onDestroy()
+    }
+
+    private fun activateRemoteControls(reason: String) {
+        if (mediaSession != null) return
+        val remotePlayer = RemotePlayer()
+        player = remotePlayer
+        val activityIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val session = MediaSession.Builder(this, remotePlayer)
+            .setSessionActivity(activityIntent)
+            .build()
+        mediaSession = session
+        // Registering the session explicitly lets MediaSessionService publish the Media3 card.
+        addSession(session)
+        logMediaNotificationState(session, "session-added:$reason")
+    }
+
+    private fun deactivateRemoteControls(reason: String) {
+        val session = mediaSession ?: return
+        mediaSession = null
+        removeSession(session)
+        session.release()
+        player?.release()
+        player = null
+        getSystemService(NotificationManager::class.java).cancel(MEDIA_NOTIFICATION_ID)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        Log.i(TAG, "Remote controls released after confirmed offline: $reason")
     }
 
     private fun configureMediaNotification() {
