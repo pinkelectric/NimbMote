@@ -102,7 +102,10 @@ internal static class LanDiscovery
             }
             catch (NetworkInformationException) { }
         }
-        addresses.Add(IPAddress.Broadcast);
+        // At boot Windows may expose no usable IPv4 address yet. Do not spend retries sending a
+        // meaningless limited broadcast; the reconnect loop will retry as soon as an interface
+        // becomes operational. On a real LAN, include limited broadcast alongside directed ones.
+        if (addresses.Count > 0) addresses.Add(IPAddress.Broadcast);
         return addresses.Select(address => new IPEndPoint(address, DiscoveryPort)).ToArray();
     }
 

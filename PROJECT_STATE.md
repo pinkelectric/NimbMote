@@ -2,9 +2,16 @@
 
 ## Current stable-test target
 
-- Work in progress: `v0.2.1` patch release from committed/tagged `v0.2.0`.
-- v0.2.0 remains unchanged at tag `v0.2.0`; its release directory contains only
-  its APK, ZIP and CHANGELOG.
+- Work in progress: `v0.2.2` patch release from committed/tagged `v0.2.1`.
+- Previous releases remain unchanged at their tags; each release directory contains
+  only its APK, ZIP and CHANGELOG.
+
+## v0.2.2 scope
+
+- Windows paired LAN reconnect now starts independently of optional GSMTC startup.
+  On a cold Windows sign-in, a delayed/unavailable global media API no longer stops
+  last-known, gateway and authenticated UDP broadcast retries. Tray diagnostics show
+  that distinction and media initialization retries with a bounded delay.
 
 ## v0.2.1 scope
 
@@ -31,5 +38,6 @@
 
 ## Next hardware checks
 
-- The v0.2.1 shutdown/offline, recovery, Edge-tab-artwork and advanced-settings
-  scenarios in `TESTING.md` require a real Galaxy and Windows PC.
+- The v0.2.2 Windows-autostart-after-reboot scenario on a third-party hotspot, plus
+  existing shutdown/offline, recovery, Edge-tab-artwork and advanced-settings checks
+  in `TESTING.md`, require real Galaxy and Windows hardware.

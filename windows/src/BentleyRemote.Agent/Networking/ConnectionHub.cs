@@ -40,6 +40,8 @@ internal sealed class ConnectionHub : IAsyncDisposable
 
     public void Start()
     {
+        Diagnostic($"Reconnect service starting: paired={_configStore.Current.IsPaired}, " +
+                   $"lastKnown={_configStore.Current.LastKnownAddress ?? "none"}");
         _bootstrapListener = new BootstrapDiscoveryListener(
             () => _pairingWindow,
             candidate => _bootstrapCandidates.Enqueue(candidate),
@@ -137,7 +139,7 @@ internal sealed class ConnectionHub : IAsyncDisposable
             if (!heldSession && !IsConnected && config.IsPaired && _configStore.GetSecret() is { } secret &&
                 !string.IsNullOrWhiteSpace(config.PhoneId))
             {
-                RaiseConnection(false, "Searching for paired phone on LAN…");
+                RaiseConnection(false, "Searching for paired phone on LAN (signed UDP broadcast)…");
                 var discovered = await LanDiscovery.DiscoverAsync(
                     config.AgentId,
                     config.PhoneId,

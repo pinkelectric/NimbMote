@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using BentleyRemote.Agent.Audio;
 using BentleyRemote.Agent.Media;
 using BentleyRemote.Agent.Networking;
@@ -15,7 +17,9 @@ internal sealed class AgentCoordinator : IAsyncDisposable
     private readonly WindowsVolumeService _volume = new();
     private readonly SystemActionDispatcher _systemActions = new(new WindowsSystemPowerController());
     private readonly ConnectionHub _hub;
+    private readonly CancellationTokenSource _stop = new();
     private readonly object _statusGate = new();
+    private Task? _mediaStartupTask;
     private string _status = "Starting…";
     private bool _connected;
 
@@ -33,21 +37,63 @@ internal sealed class AgentCoordinator : IAsyncDisposable
     public bool IsPaired => _configStore.Current.IsPaired;
     public string? PairedPhoneName => _configStore.Current.PhoneName;
 
-    public async Task StartAsync()
+    public Task StartAsync()
     {
-        try
+        // Network pairing/reconnect must never wait for GSMTC. At Windows logon, RequestAsync()
+        // can temporarily be unavailable while Wi-Fi is already usable; previously that stopped
+        // ConnectionHub from starting at all until the user manually restarted the agent.
+        _hub.Start();
+        _volume.Start();
+        _mediaStartupTask = Task.Run(() => StartMediaWhenReadyAsync(_stop.Token));
+        RaiseStartupDiagnostic("Network reconnect started; media integration is initializing in background");
+        return Task.CompletedTask;
+    }
+
+    private async Task StartMediaWhenReadyAsync(CancellationToken cancellationToken)
+    {
+        var failures = 0;
+        while (!cancellationToken.IsCancellationRequested)
         {
-            await _media.StartAsync();
-            _volume.Start();
-            _hub.Start();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            SetStatus(false, "Windows denied access to global media sessions");
-        }
-        catch (Exception ex)
-        {
-            SetStatus(false, $"Startup failed: {ex.Message}");
+            Task attempt;
+            try
+            {
+                attempt = _media.StartAsync();
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException or COMException)
+            {
+                failures++;
+                RaiseStartupDiagnostic(
+                    $"Windows media integration unavailable; retrying while LAN reconnect stays active (attempt {failures}): {ex.Message}");
+                await Task.Delay(StartupReadinessPolicy.NextMediaRetryDelay(failures), cancellationToken);
+                continue;
+            }
+
+            // Keep waiting for the same request when the media broker is merely late. Starting
+            // another request here could race the broker and hide the real readiness diagnostic.
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await attempt.WaitAsync(StartupReadinessPolicy.MediaAttemptWindow, cancellationToken);
+                    Debug.WriteLine("[BentleyRemote] Windows media integration ready");
+                    return;
+                }
+                catch (TimeoutException)
+                {
+                    failures++;
+                    RaiseStartupDiagnostic(
+                        $"Windows media integration is still starting; LAN reconnect remains active (attempt {failures})");
+                    await Task.Delay(StartupReadinessPolicy.NextMediaRetryDelay(failures), cancellationToken);
+                }
+                catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException or COMException)
+                {
+                    failures++;
+                    RaiseStartupDiagnostic(
+                        $"Windows media integration unavailable; retrying while LAN reconnect stays active (attempt {failures}): {ex.Message}");
+                    await Task.Delay(StartupReadinessPolicy.NextMediaRetryDelay(failures), cancellationToken);
+                    break;
+                }
+            }
         }
     }
 
@@ -77,6 +123,13 @@ internal sealed class AgentCoordinator : IAsyncDisposable
             _connected = connected;
             _status = status;
         }
+    }
+
+    private void RaiseStartupDiagnostic(string status)
+    {
+        Debug.WriteLine($"[BentleyRemote] {status}");
+        // Do not overwrite an authenticated-network status with an optional media warning.
+        if (!IsConnected) SetStatus(false, status);
     }
 
     private Task SendSnapshotAsync() => _hub.SendAsync("state.snapshot", new
@@ -164,8 +217,15 @@ internal sealed class AgentCoordinator : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        _stop.Cancel();
         await _hub.DisposeAsync();
+        if (_mediaStartupTask is not null)
+        {
+            try { await _mediaStartupTask; }
+            catch (OperationCanceledException) { }
+        }
         await _media.DisposeAsync();
         await _volume.DisposeAsync();
+        _stop.Dispose();
     }
 }

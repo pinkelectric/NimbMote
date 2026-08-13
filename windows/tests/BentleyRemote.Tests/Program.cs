@@ -6,6 +6,7 @@ using BentleyRemote.Agent.Networking;
 using BentleyRemote.Agent.Security;
 using BentleyRemote.Agent.SystemActions;
 using BentleyRemote.Agent.Media;
+using BentleyRemote.Agent.Core;
 
 var tests = new (string Name, Func<Task> Run)[]
 {
@@ -15,7 +16,8 @@ var tests = new (string Name, Func<Task> Run)[]
     ("pairing crypto roundtrip", () => { TestPairingCrypto(); return Task.CompletedTask; }),
     ("directed broadcast", () => { TestBroadcast(); return Task.CompletedTask; }),
     ("loopback discovery responder", TestLoopbackDiscoveryAsync),
-    ("artwork revision rejects stale metadata", () => { TestArtworkRevision(); return Task.CompletedTask; })
+    ("artwork revision rejects stale metadata", () => { TestArtworkRevision(); return Task.CompletedTask; }),
+    ("startup readiness retry remains bounded", () => { TestStartupReadiness(); return Task.CompletedTask; })
 };
 
 foreach (var test in tests)
@@ -172,6 +174,16 @@ static void TestArtworkRevision()
     Require(tracker.Begin("edge\nnew", out var newRevision), "changed Edge metadata was not marked new");
     Require(!tracker.IsCurrent(oldRevision), "late old thumbnail would be accepted");
     Require(tracker.IsCurrent(newRevision), "current thumbnail was rejected");
+}
+
+static void TestStartupReadiness()
+{
+    Require(StartupReadinessPolicy.MediaAttemptWindow == TimeSpan.FromSeconds(15),
+        "startup attempt window changed unexpectedly");
+    Require(StartupReadinessPolicy.NextMediaRetryDelay(1) == TimeSpan.FromSeconds(5),
+        "first retry delay is wrong");
+    Require(StartupReadinessPolicy.NextMediaRetryDelay(99) == TimeSpan.FromSeconds(30),
+        "retry delay is not capped");
 }
 
 static void Require(bool condition, string message)
