@@ -76,7 +76,32 @@ Android-сборка:
 После сборки и сопряжения интернет для управления не нужен. Мобильные данные
 могут быть выключены, пока локальная hotspot-связь телефон ↔ ПК остаётся жива.
 
-## Сборка и запуск Windows-агента
+## Установка и обновление Windows-агента
+
+Основной путь установки — не запускать EXE из случайной распакованной папки.
+Распакуйте Windows ZIP текущего релиза и запустите из этой папки:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Install-Or-Update.ps1
+```
+
+Скрипт не требует администратора. Он останавливает только `BentleyRemote.Agent`,
+копирует файлы в постоянный путь `%LOCALAPPDATA%\BentleyRemote\Agent`, сохраняет
+DPAPI pairing-config в `%LOCALAPPDATA%\BentleyRemote`, обновляет единственную
+запись `HKCU\...\Run\Bentley Remote` на этот постоянный EXE и запускает новую
+версию. Повторный запуск поверх новой ZIP-версии — штатный способ обновления.
+
+Для безопасного просмотра запланированных действий без изменений используйте:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Install-Or-Update.ps1 -WhatIf
+```
+
+В tray выберите **About / diagnostics…**, чтобы увидеть версию и фактический путь
+запущенного EXE. Если там не `%LOCALAPPDATA%\BentleyRemote\Agent\BentleyRemote.Agent.exe`,
+запустите installer из свежего ZIP.
+
+## Сборка и portable-запуск Windows-агента
 
 Из PowerShell в корне репозитория:
 
@@ -95,9 +120,10 @@ dotnet publish .\windows\src\BentleyRemote.Agent\BentleyRemote.Agent.csproj `
   -o .\artifacts\windows-x64
 ```
 
-Запустите `artifacts\windows-x64\BentleyRemote.Agent.exe`. Иконка появится в
-system tray. В меню доступны статус, pairing, список найденных gateway,
-автозапуск и выход. Автозапуск записывается только в HKCU текущего пользователя.
+Portable EXE подходит для диагностики, но не должен быть основным способом
+обновления. Иконка появится в system tray. В меню доступны статус, pairing,
+About/diagnostics, список найденных gateway, автозапуск и выход. Автозапуск
+регистрируется только для постоянной per-user папки после installer.
 
 ## Сборка APK
 

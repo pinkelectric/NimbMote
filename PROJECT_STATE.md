@@ -2,7 +2,7 @@
 
 ## Current stable-test target
 
-- Work in progress: `v0.2.2` patch release from committed/tagged `v0.2.1`.
+- Work in progress: `v0.2.3` patch release from committed/tagged `v0.2.2`.
 - Previous releases remain unchanged at their tags; each release directory contains
   only its APK, ZIP and CHANGELOG.
 
@@ -12,6 +12,16 @@
   On a cold Windows sign-in, a delayed/unavailable global media API no longer stops
   last-known, gateway and authenticated UDP broadcast retries. Tray diagnostics show
   that distinction and media initialization retries with a bounded delay.
+
+## v0.2.3 scope
+
+- Windows agent has one managed per-user install location:
+  `%LOCALAPPDATA%\BentleyRemote\Agent`. The release ZIP contains
+  `Install-Or-Update.ps1`, which replaces only Bentley Remote files and its Run
+  value, preserving DPAPI pairing state in the parent directory.
+- Tray About/diagnostics reports the binary version and actual executable path.
+- The desktop screenshot card remains deferred to v0.3+; v0.2.3 is a compatible
+  install/update reliability patch.
 
 ## v0.2.1 scope
 

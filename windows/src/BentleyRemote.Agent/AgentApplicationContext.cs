@@ -1,12 +1,12 @@
 using BentleyRemote.Agent.Core;
+using BentleyRemote.Agent.Installation;
 using Microsoft.Win32;
+using System.Reflection;
 
 namespace BentleyRemote.Agent;
 
 internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
 {
-    private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string RunValueName = "Bentley Remote";
     private readonly AgentCoordinator _coordinator = new();
     private readonly NotifyIcon _trayIcon;
     private readonly ToolStripMenuItem _statusItem;
@@ -30,6 +30,7 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
             _statusItem,
             new ToolStripSeparator(),
             _pairItem,
+            new ToolStripMenuItem("About / diagnostics…", null, AboutClicked),
             new ToolStripMenuItem("Copy hotspot gateways", null, CopyGatewaysClicked),
             _autoStartItem,
             new ToolStripSeparator(),
@@ -84,25 +85,47 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
         Clipboard.SetText(text);
     }
 
+    private static void AboutClicked(object? sender, EventArgs e)
+    {
+        var assembly = Assembly.GetEntryAssembly();
+        var version = assembly?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? assembly?.GetName().Version?.ToString() ?? "unknown";
+        MessageBox.Show(
+            $"Bentley Remote Agent\nVersion: {version}\nExecutable: {Environment.ProcessPath}\n\n" +
+            $"Managed install path: {AgentInstallLayout.ExecutablePath(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))}",
+            "Bentley Remote diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
     private void AutoStartClicked(object? sender, EventArgs e)
     {
-        using var key = Registry.CurrentUser.CreateSubKey(RunKeyPath);
+        using var key = Registry.CurrentUser.CreateSubKey(AgentInstallLayout.RunKeyPath);
         if (_autoStartItem.Checked)
         {
-            key.DeleteValue(RunValueName, false);
+            key.DeleteValue(AgentInstallLayout.RunValueName, false);
             _autoStartItem.Checked = false;
         }
         else
         {
-            key.SetValue(RunValueName, $"\"{Environment.ProcessPath}\"");
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var installedPath = AgentInstallLayout.ExecutablePath(localAppData);
+            if (!File.Exists(installedPath))
+            {
+                MessageBox.Show("Run Install-Or-Update.ps1 from the release ZIP first. Autostart is only registered for the managed install path.",
+                    "Bentley Remote", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                _autoStartItem.Checked = false;
+                return;
+            }
+            key.SetValue(AgentInstallLayout.RunValueName, AgentInstallLayout.StartupCommand(localAppData));
             _autoStartItem.Checked = true;
         }
     }
 
     private static bool IsAutoStartEnabled()
     {
-        using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath);
-        return key?.GetValue(RunValueName) is string;
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        using var key = Registry.CurrentUser.OpenSubKey(AgentInstallLayout.RunKeyPath);
+        return string.Equals(key?.GetValue(AgentInstallLayout.RunValueName) as string,
+            AgentInstallLayout.StartupCommand(localAppData), StringComparison.OrdinalIgnoreCase);
     }
 
     private async void ExitClicked(object? sender, EventArgs e)

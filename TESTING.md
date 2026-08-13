@@ -17,6 +17,28 @@
 - [ ] В APK manifest присутствуют INTERNET, POST_NOTIFICATIONS,
   FOREGROUND_SERVICE и FOREGROUND_SERVICE_MEDIA_PLAYBACK.
 - [ ] `protocol/examples/state.snapshot.json` читается обеими реализациями.
+- [ ] Из распакованного Windows ZIP выполнить `Install-Or-Update.ps1 -WhatIf`:
+  выводит `%LOCALAPPDATA%\BentleyRemote\Agent\BentleyRemote.Agent.exe`, версию
+  и одну intended Run-запись, не меняя процессы/реестр.
+
+## 1a. Установка/обновление Windows agent — пользовательский тест
+
+> Этот шаг меняет только Bentley Remote в профиле текущего Windows-пользователя:
+> останавливает его процесс, заменяет его managed-файлы и Run-запись. Другие
+> программы, их Run-записи и pairing-config не затрагиваются.
+
+- [ ] Закрыть все старые копии agent из tray. Распаковать Windows ZIP v0.2.3 и
+  выполнить `Install-Or-Update.ps1` без администратора.
+- [ ] Скрипт выводит установленную версию и путь
+  `%LOCALAPPDATA%\BentleyRemote\Agent\BentleyRemote.Agent.exe`.
+- [ ] В tray → About / diagnostics… версия соответствует v0.2.3, а Executable
+  указывает на managed path, не на старую папку v0.1.1/v0.2.x.
+- [ ] В `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` значение
+  `Bentley Remote` указывает только на этот managed EXE. Существующая paired
+  связь сохранена, повторный pairing не требуется.
+- [ ] Повторно запустить installer из той же или следующей версии: создаётся
+  одна Run-запись и один запущенный agent. Перезагрузить Windows и проверить,
+  что запускается эта же версия.
 
 ## 2. Установка и базовый UI — реальный A56
 

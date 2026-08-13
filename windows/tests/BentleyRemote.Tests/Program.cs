@@ -7,6 +7,7 @@ using BentleyRemote.Agent.Security;
 using BentleyRemote.Agent.SystemActions;
 using BentleyRemote.Agent.Media;
 using BentleyRemote.Agent.Core;
+using BentleyRemote.Agent.Installation;
 
 var tests = new (string Name, Func<Task> Run)[]
 {
@@ -17,7 +18,8 @@ var tests = new (string Name, Func<Task> Run)[]
     ("directed broadcast", () => { TestBroadcast(); return Task.CompletedTask; }),
     ("loopback discovery responder", TestLoopbackDiscoveryAsync),
     ("artwork revision rejects stale metadata", () => { TestArtworkRevision(); return Task.CompletedTask; }),
-    ("startup readiness retry remains bounded", () => { TestStartupReadiness(); return Task.CompletedTask; })
+    ("startup readiness retry remains bounded", () => { TestStartupReadiness(); return Task.CompletedTask; }),
+    ("managed install path and startup command", () => { TestInstallLayout(); return Task.CompletedTask; })
 };
 
 foreach (var test in tests)
@@ -184,6 +186,19 @@ static void TestStartupReadiness()
         "first retry delay is wrong");
     Require(StartupReadinessPolicy.NextMediaRetryDelay(99) == TimeSpan.FromSeconds(30),
         "retry delay is not capped");
+}
+
+static void TestInstallLayout()
+{
+    const string localAppData = @"C:\Users\Test\AppData\Local";
+    var executable = AgentInstallLayout.ExecutablePath(localAppData);
+    Require(executable == @"C:\Users\Test\AppData\Local\BentleyRemote\Agent\BentleyRemote.Agent.exe",
+        "managed executable path is wrong");
+    Require(AgentInstallLayout.StartupCommand(localAppData) == $"\"{executable}\"",
+        "startup registration command is wrong");
+    Require(AgentInstallLayout.RunKeyPath == @"Software\Microsoft\Windows\CurrentVersion\Run" &&
+            AgentInstallLayout.RunValueName == "Bentley Remote",
+        "startup registry intent changed unexpectedly");
 }
 
 static void Require(bool condition, string message)
