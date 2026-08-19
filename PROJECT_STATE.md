@@ -2,7 +2,7 @@
 
 ## Current stable-test target
 
-- Work in progress: `v0.2.5` patch release from committed/tagged `v0.2.4`.
+- Work in progress: `v0.2.6` installer-only patch from committed/tagged `v0.2.5`.
 - Previous releases remain unchanged at their tags; each release directory contains
   only its APK, Windows Setup EXE and CHANGELOG.
 
@@ -32,6 +32,12 @@
   timeline snapshot while playing; pause/seek/new snapshot rebase it immediately.
 - Native Setup exposes directory selection, a Start-menu shortcut and an enabled
   desktop-shortcut task while keeping autostart pointed to the selected `{app}`.
+
+## v0.2.6 scope
+
+- Start-menu icon uses the explicit common Programs folder instead of `{group}`;
+  it is unconditional and independent of the optional desktop task. Android is
+  unchanged, so this installer-only release does not duplicate an APK.
 
 ## v0.2.1 scope
 

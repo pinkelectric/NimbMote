@@ -34,6 +34,8 @@
    versioned debug APK, нативный Windows Setup EXE и `CHANGELOG.md`. Portable
    ZIP допустим только как внутренний вход сборки Setup и не является
    пользовательским release-артефактом.
+   Для installer-only PATCH без изменений Android допускаются только новый Setup
+   EXE и `CHANGELOG.md`; APK наследуется от предыдущей версии и не пересобирается.
 3. Не помещать в `releases` исходники, SDK, кэши, `build`, `bin`, `obj` или полную
    копию репозитория.
 4. CHANGELOG должен кратко описывать изменения, статус проверок и SHA-256 обоих

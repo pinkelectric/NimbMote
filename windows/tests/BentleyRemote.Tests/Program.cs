@@ -141,8 +141,8 @@ static void TestPairingCrypto()
 static async Task TestLoopbackDiscoveryAsync()
 {
     var secret = Enumerable.Range(0, 32).Select(value => (byte)value).ToArray();
-    using var responder = new System.Net.Sockets.UdpClient(
-        new IPEndPoint(IPAddress.Loopback, LanDiscovery.DiscoveryPort));
+    using var responder = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+    var endpoint = (IPEndPoint)responder.Client.LocalEndPoint!;
     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
     var responderTask = Task.Run(async () =>
     {
@@ -159,7 +159,7 @@ static async Task TestLoopbackDiscoveryAsync()
         await responder.SendAsync(response, received.RemoteEndPoint, timeout.Token);
     }, timeout.Token);
     var results = await LanDiscovery.DiscoverAsync("agent-id", "phone-id", secret, null, timeout.Token,
-        new[] { new IPEndPoint(IPAddress.Loopback, LanDiscovery.DiscoveryPort) });
+        new[] { endpoint });
     await responderTask;
     Require(results.Count == 1 && results[0].Address.Equals(IPAddress.Loopback) && results[0].Port == 45892,
         "loopback signed responder was not selected");

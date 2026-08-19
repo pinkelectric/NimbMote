@@ -43,7 +43,9 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 Name: "desktopicon"; Description: "Создать ярлык на рабочем столе"; Flags: checkedonce
 
 [Icons]
-Name: "{group}\Bentley Remote Agent"; Filename: "{app}\{#AppExeName}"
+; Use the explicit common Start-menu folder. {group} depends on shell/group-page
+; resolution and was not discoverable after a clean v0.2.5 installation.
+Name: "{commonprograms}\Bentley Remote\Bentley Remote Agent"; Filename: "{app}\{#AppExeName}"
 Name: "{autodesktop}\Bentley Remote"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Registry]
