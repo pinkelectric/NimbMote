@@ -1,5 +1,6 @@
 using Windows.Media.Control;
 using Windows.Storage.Streams;
+using Windows.Graphics.Imaging;
 
 namespace BentleyRemote.Agent.Media;
 
@@ -14,6 +15,7 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
     private readonly ArtworkRevisionTracker _artworkRevision = new();
     private string? _artworkMime;
     private string? _artworkBase64;
+    private long _mediaPropertiesRevision;
     private GlobalSystemMediaTransportControlsSession? _subscribedSession;
 
     public event Action<MediaState>? StateChanged;
@@ -30,7 +32,9 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
     public async Task RefreshNowAsync()
     {
         if (_manager is null) return;
-        if (!await _refreshGate.WaitAsync(0)) return;
+        // Do not drop a real GSMTC event while thumbnail decoding is in progress. The
+        // generation check makes queued refreshes harmless, and guarantees a new read follows.
+        await _refreshGate.WaitAsync();
         try
         {
             var session = _manager.GetCurrentSession();
@@ -60,7 +64,18 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
         CurrentSessionChangedEventArgs args) => QueueRefresh();
 
     private void OnMediaPropertiesChanged(GlobalSystemMediaTransportControlsSession sender,
-        MediaPropertiesChangedEventArgs args) => QueueRefresh();
+        MediaPropertiesChangedEventArgs args)
+    {
+        // Edge reuses a GSMTC object across videos and can emit identical/empty metadata. Event
+        // order is therefore the identity: invalidate artwork before any asynchronous read ends.
+        var revision = _artworkRevision.Advance();
+        Interlocked.Exchange(ref _mediaPropertiesRevision, revision);
+        _artworkMime = null;
+        _artworkBase64 = null;
+        Log($"artwork revision={revision} source=media-properties cleared");
+        PublishArtworkCleared();
+        QueueRefresh();
+    }
 
     private void OnPlaybackInfoChanged(GlobalSystemMediaTransportControlsSession sender,
         PlaybackInfoChangedEventArgs args) => QueueRefresh();
@@ -80,7 +95,8 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
             _subscribedSession.TimelinePropertiesChanged -= OnTimelinePropertiesChanged;
         }
         _subscribedSession = session;
-        _artworkRevision.Clear();
+        var revision = _artworkRevision.Advance();
+        Interlocked.Exchange(ref _mediaPropertiesRevision, revision);
         _artworkMime = null;
         _artworkBase64 = null;
         if (session is not null)
@@ -89,6 +105,14 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
             session.PlaybackInfoChanged += OnPlaybackInfoChanged;
             session.TimelinePropertiesChanged += OnTimelinePropertiesChanged;
         }
+    }
+
+    private void PublishArtworkCleared()
+    {
+        var previous = _current;
+        if (!previous.HasSession || (previous.ArtworkBase64 is null && previous.ArtworkMime is null)) return;
+        _current = previous with { ArtworkMime = null, ArtworkBase64 = null };
+        StateChanged?.Invoke(_current);
     }
 
     public async Task<bool> ExecuteAsync(string action, long? positionMs, long? offsetMs)
@@ -159,22 +183,19 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
         var relativePosition = timeline.Position - timeline.StartTime;
         long? positionMs = relativePosition >= TimeSpan.Zero ? (long)relativePosition.TotalMilliseconds : null;
 
-        // Edge intentionally keeps one GSMTC object while changing tabs.  The richer fingerprint
-        // detects the new metadata and clears old art before the new thumbnail is read.
-        var artworkKey = $"{session.SourceAppUserModelId}\n{media.Title}\n{media.Artist}\n{media.AlbumTitle}\n{media.AlbumArtist}\n{durationMs}";
-        var artworkChanged = _artworkRevision.Begin(artworkKey, out var artworkRevision);
-        if (artworkChanged)
+        var artworkRevision = Interlocked.Read(ref _mediaPropertiesRevision);
+        if (artworkRevision == 0)
         {
-            // Publish a metadata-only state first; the following thumbnail update must belong to
-            // this revision and cannot retain artwork from the old Edge tab.
-            _artworkMime = null;
-            _artworkBase64 = null;
+            artworkRevision = _artworkRevision.Advance();
+            Interlocked.Exchange(ref _mediaPropertiesRevision, artworkRevision);
         }
         if (_artworkBase64 is null)
         {
-            var artwork = await ReadArtworkAsync(media.Thumbnail);
+            var artwork = await ReadArtworkAsync(media.Thumbnail, artworkRevision);
             if (_artworkRevision.IsCurrent(artworkRevision))
                 (_artworkMime, _artworkBase64) = artwork;
+            else
+                Log($"artwork revision={artworkRevision} discarded-stale current={_artworkRevision.Current}");
         }
 
         return new MediaState(
@@ -193,13 +214,19 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
             _artworkBase64);
     }
 
-    private static async Task<(string? Mime, string? Base64)> ReadArtworkAsync(IRandomAccessStreamReference? reference)
+    private static async Task<(string? Mime, string? Base64)> ReadArtworkAsync(IRandomAccessStreamReference? reference, long revision)
     {
         if (reference is null) return (null, null);
         try
         {
             using var stream = await reference.OpenReadAsync();
-            if (stream.Size == 0 || stream.Size > MaxArtworkBytes) return (null, null);
+            if (stream.Size == 0 || stream.Size > MaxArtworkBytes)
+            {
+                Log($"artwork revision={revision} rejected bytes={stream.Size}");
+                return (null, null);
+            }
+            var decoder = await BitmapDecoder.CreateAsync(stream);
+            Log($"artwork revision={revision} decoded dimensions={decoder.PixelWidth}x{decoder.PixelHeight} bytes={stream.Size}");
             using var reader = new DataReader(stream.GetInputStreamAt(0));
             var size = (uint)stream.Size;
             await reader.LoadAsync(size);
@@ -208,6 +235,7 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
             var mime = bytes.Length >= 4 && bytes[0] == 0x89 && bytes[1] == 0x50 ? "image/png"
                 : bytes.Length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 ? "image/jpeg"
                 : "application/octet-stream";
+            Log($"artwork revision={revision} decoded bytes={bytes.Length} mime={mime}");
             return (mime, Convert.ToBase64String(bytes));
         }
         catch
@@ -215,6 +243,8 @@ internal sealed class WindowsMediaSessionService : IAsyncDisposable
             return (null, null);
         }
     }
+
+    private static void Log(string message) => System.Diagnostics.Debug.WriteLine($"BentleyRemote.Media {message}");
 
     public async ValueTask DisposeAsync()
     {

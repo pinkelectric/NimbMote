@@ -9,6 +9,8 @@ data class RemoteMediaState(
     val playbackStatus: String = "closed",
     val positionMs: Long? = null,
     val durationMs: Long? = null,
+    /** Monotonic receipt time of the authoritative Windows timeline snapshot. */
+    val timelineReceivedAtElapsedMs: Long = 0,
     val canSeek: Boolean = false,
     val canPrevious: Boolean = false,
     val canNext: Boolean = false,

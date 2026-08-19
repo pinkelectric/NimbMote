@@ -1,6 +1,7 @@
 package com.bentley.remote.network
 
 import android.util.Base64
+import android.os.SystemClock
 import com.bentley.remote.data.RemoteCommands
 import com.bentley.remote.data.RemoteRepository
 import com.bentley.remote.model.RemoteMediaState
@@ -378,6 +379,7 @@ class RemoteTransport(
                 playbackStatus = payload.string("playbackStatus").ifBlank { "unknown" },
                 positionMs = payload.longOrNull("positionMs"),
                 durationMs = payload.longOrNull("durationMs"),
+                timelineReceivedAtElapsedMs = SystemClock.elapsedRealtime(),
                 canSeek = payload.boolean("canSeek"),
                 canPrevious = payload.boolean("canPrevious"),
                 canNext = payload.boolean("canNext"),

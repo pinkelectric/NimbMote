@@ -172,8 +172,10 @@ static void TestBroadcast() => Require(
 static void TestArtworkRevision()
 {
     var tracker = new ArtworkRevisionTracker();
-    Require(tracker.Begin("edge\nold", out var oldRevision), "first metadata was not marked new");
-    Require(tracker.Begin("edge\nnew", out var newRevision), "changed Edge metadata was not marked new");
+    var oldRevision = tracker.Advance();
+    Require(tracker.IsCurrent(oldRevision), "first metadata revision was not current");
+    var newRevision = tracker.Advance();
+    Require(!tracker.IsCurrent(oldRevision), "new event did not invalidate old artwork");
     Require(!tracker.IsCurrent(oldRevision), "late old thumbnail would be accepted");
     Require(tracker.IsCurrent(newRevision), "current thumbnail was rejected");
 }

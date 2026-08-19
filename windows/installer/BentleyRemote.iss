@@ -23,7 +23,6 @@ AppPublisher=Bentley Remote
 DefaultDirName={autopf}\Bentley Remote
 DefaultGroupName=Bentley Remote
 DisableProgramGroupPage=yes
-DisableDirPage=yes
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -39,6 +38,13 @@ UninstallDisplayIcon={app}\{#AppExeName}
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[Tasks]
+Name: "desktopicon"; Description: "Создать ярлык на рабочем столе"; Flags: checkedonce
+
+[Icons]
+Name: "{group}\Bentley Remote Agent"; Filename: "{app}\{#AppExeName}"
+Name: "{autodesktop}\Bentley Remote"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Registry]
 ; Per-machine startup launches the installed agent for the signed-in user. It
@@ -64,6 +70,8 @@ begin
     RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run',
       'Bentley Remote');
     RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run',
+      'BentleyRemote.Agent');
+    RegDeleteValue(HKLM, 'Software\Microsoft\Windows\CurrentVersion\Run',
       'BentleyRemote.Agent');
   end;
 end;

@@ -6,26 +6,21 @@ namespace BentleyRemote.Agent.Media;
 /// </summary>
 internal sealed class ArtworkRevisionTracker
 {
-    private string? _key;
     private long _revision;
 
+    /// <summary>Starts a new media-properties generation even when title/artist did not change.</summary>
+    public long Advance() => Interlocked.Increment(ref _revision);
+
+    public long Current => Interlocked.Read(ref _revision);
+
+    public bool IsCurrent(long revision) => revision == Current;
+
+    public void Clear() => Advance();
+
+    [Obsolete("Use Advance for event-ordered GSMTC media properties.")]
     public bool Begin(string key, out long revision)
     {
-        var changed = !StringComparer.Ordinal.Equals(key, _key);
-        if (changed)
-        {
-            _key = key;
-            _revision++;
-        }
-        revision = _revision;
-        return changed;
-    }
-
-    public bool IsCurrent(long revision) => revision == _revision;
-
-    public void Clear()
-    {
-        _key = null;
-        _revision++;
+        revision = Advance();
+        return true;
     }
 }

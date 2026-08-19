@@ -2,7 +2,7 @@
 
 ## Current stable-test target
 
-- Latest stable-test release: `v0.2.4`, following committed/tagged `v0.2.3`.
+- Work in progress: `v0.2.5` patch release from committed/tagged `v0.2.4`.
 - Previous releases remain unchanged at their tags; each release directory contains
   only its APK, Windows Setup EXE and CHANGELOG.
 
@@ -22,6 +22,16 @@
 - Tray About/diagnostics reports the binary version and actual executable path.
 - The desktop screenshot card remains deferred to v0.3+; v0.2.4 is a compatible
   install/update reliability patch.
+
+## v0.2.5 scope
+
+- GSMTC MediaPropertiesChanged advances artwork generation even for identical or
+  empty Edge metadata, clears outgoing artwork before async loading, and rejects
+  late results from older generations.
+- Android main-screen progress is predicted locally from the latest monotonic
+  timeline snapshot while playing; pause/seek/new snapshot rebase it immediately.
+- Native Setup exposes directory selection, a Start-menu shortcut and an enabled
+  desktop-shortcut task while keeping autostart pointed to the selected `{app}`.
 
 ## v0.2.1 scope
 

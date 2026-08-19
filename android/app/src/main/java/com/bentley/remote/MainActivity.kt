@@ -45,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -69,9 +70,12 @@ import androidx.compose.material.icons.filled.SettingsEthernet
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bentley.remote.data.RemoteRepository
+import com.bentley.remote.media.TimelinePredictor
 import com.bentley.remote.model.AppUiState
 import com.bentley.remote.service.BentleyRemoteService
 import java.util.Locale
+import android.os.SystemClock
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -225,13 +229,22 @@ private fun MediaCard(state: AppUiState) {
             }
 
             if (media.durationMs != null && media.durationMs > 0) {
-                var position by remember(media.positionMs, media.durationMs) {
-                    mutableFloatStateOf((media.positionMs ?: 0).coerceIn(0, media.durationMs).toFloat())
+                var position by remember { mutableFloatStateOf(0f) }
+                var dragging by remember { mutableStateOf(false) }
+                LaunchedEffect(media.positionMs, media.durationMs, media.playbackStatus, media.timelineReceivedAtElapsedMs) {
+                    while (true) {
+                        if (!dragging) position = TimelinePredictor.positionMs(media, SystemClock.elapsedRealtime()).toFloat()
+                        if (!media.isPlaying) break
+                        delay(250)
+                    }
                 }
                 Slider(
                     value = position,
-                    onValueChange = { position = it },
-                    onValueChangeFinished = { RemoteRepository.media("seek", positionMs = position.toLong()) },
+                    onValueChange = { dragging = true; position = it },
+                    onValueChangeFinished = {
+                        dragging = false
+                        RemoteRepository.media("seek", positionMs = position.toLong())
+                    },
                     valueRange = 0f..media.durationMs.toFloat().coerceAtLeast(1f),
                     enabled = state.connected && media.canSeek,
                 )

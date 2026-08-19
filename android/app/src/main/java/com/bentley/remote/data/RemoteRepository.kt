@@ -69,7 +69,13 @@ object RemoteRepository {
         mutableState.update { it.copy(pairingCode = code, pairingExpiresAt = expiresAt, pairedComputer = pairedComputer) }
     }
 
-    internal fun mediaState(media: RemoteMediaState) { mutableState.update { it.copy(media = media) } }
+    internal fun mediaState(media: RemoteMediaState) {
+        mutableState.update { state ->
+            // WebSocket is ordered, but never let a queued older timeline undo a newer seek.
+            if (media.timelineReceivedAtElapsedMs < state.media.timelineReceivedAtElapsedMs) state
+            else state.copy(media = media)
+        }
+    }
     internal fun volumeState(volume: RemoteVolumeState) { mutableState.update { it.copy(volume = volume) } }
     internal fun commandResult(message: String) { mutableState.update { it.copy(commandResult = message) } }
 
