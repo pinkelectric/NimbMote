@@ -44,6 +44,13 @@ object RemoteRepository {
     }
 
     fun bind(boundCommands: RemoteCommands?) { commands = boundCommands }
+    /**
+     * Do not clear a newer service's command channel during the boot-service →
+     * MediaSessionService handoff.
+     */
+    fun unbind(owner: RemoteCommands) {
+        if (commands === owner) commands = null
+    }
     fun media(action: String, positionMs: Long? = null, offsetMs: Long? = null) =
         commands?.media(action, positionMs, offsetMs)
     fun volume(action: String, level: Float? = null, delta: Float? = null) =

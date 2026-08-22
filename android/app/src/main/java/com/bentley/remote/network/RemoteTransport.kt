@@ -502,7 +502,6 @@ class RemoteTransport(
         authenticated.keys.forEach { it.close(1001, "service stopping") }
         try { server.stop(1_000) } catch (_: Exception) { }
         scope.cancel()
-        RemoteRepository.bind(null)
     }
 
     private fun hmac(secret: ByteArray, body: ByteArray): ByteArray = Mac.getInstance("HmacSHA256").run {

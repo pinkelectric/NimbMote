@@ -1,4 +1,4 @@
-# Bentley Remote v0.2.5 — Galaxy A56 / One UI 8.5 test plan
+# Bentley Remote v0.2.7 — Galaxy A56 / One UI 8.5 test plan
 
 Этот документ разделяет проверки, которые можно автоматизировать на любой
 машине, и обязательные аппаратные проверки на реальном Samsung Galaxy A56.
@@ -15,7 +15,8 @@
   подтверждает шаг громкости 1% и состав power UI.
 - [ ] `android\gradlew.bat :app:assembleDebug` проходит с JDK 17 и SDK 35.
 - [ ] В APK manifest присутствуют INTERNET, POST_NOTIFICATIONS,
-  FOREGROUND_SERVICE и FOREGROUND_SERVICE_MEDIA_PLAYBACK.
+  FOREGROUND_SERVICE, FOREGROUND_SERVICE_MEDIA_PLAYBACK,
+  FOREGROUND_SERVICE_CONNECTED_DEVICE, CHANGE_WIFI_STATE и RECEIVE_BOOT_COMPLETED.
 - [ ] `protocol/examples/state.snapshot.json` читается обеими реализациями.
 - [ ] Windows console tests подтверждают install layout: Program Files path,
   единственное известное имя Run-value и legacy-value cleanup intent.
@@ -47,6 +48,22 @@
   Update сохраняет ранее выбранный каталог.
 - [ ] После установки v0.2.6 открыть **Пуск** и найти
   **Bentley Remote → Bentley Remote Agent**.
+- [ ] На Android центральная кнопка во время Playing показывает одноцветную
+  векторную Pause-иконку в той же outline-кнопке, что Play/Previous/Next; жёлтого
+  emoji-символа нет.
+- [ ] На уже paired телефоне выполнить обычную перезагрузку, не делая Force Stop:
+  после разблокировки Bentley сам показывает постоянное статусное уведомление
+  «Restoring…», затем «Connected to DELL» либо «Waiting…», и восстанавливает
+  LAN-соединение без открытия Activity. Сохранить результат отдельно для Android
+  14 и ниже и для Android 15+.
+- [ ] На Android 15+ у статуса нет Media3 player-card до первого открытия Bentley:
+  это намеренно, потому что `mediaPlayback` foreground service запрещён прямо из
+  BOOT_COMPLETED. Нажать уведомление: обычная Activity должна открыться, принять
+  соединение от boot-service и восстановить стандартную media-card без ручного
+  pairing. Battery → Unrestricted обязателен; режим Restricted может не доставить
+  BOOT_COMPLETED.
+- [ ] После обновления APK поверх уже paired версии не открывать Activity и
+  проверить тот же старт `connectedDevice` service по `MY_PACKAGE_REPLACED`.
 
 ## 2. Установка и базовый UI — реальный A56
 

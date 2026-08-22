@@ -54,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -68,6 +69,10 @@ import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.SettingsEthernet
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bentley.remote.data.RemoteRepository
 import com.bentley.remote.media.TimelinePredictor
@@ -257,11 +262,19 @@ private fun MediaCard(state: AppUiState) {
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 ControlButton("↶ 10", state.connected && media.canSeek) { RemoteRepository.media("seekBy", offsetMs = -10_000) }
-                ControlButton("⏮", state.connected && media.canPrevious) { RemoteRepository.media("previous") }
-                ControlButton(if (media.isPlaying) "⏸" else "▶", state.connected && media.hasSession) {
+                ControlIconButton(Icons.Default.SkipPrevious, "Previous", state.connected && media.canPrevious) {
+                    RemoteRepository.media("previous")
+                }
+                ControlIconButton(
+                    if (media.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    if (media.isPlaying) "Pause" else "Play",
+                    state.connected && media.hasSession,
+                ) {
                     RemoteRepository.media(if (media.isPlaying) "pause" else "play")
                 }
-                ControlButton("⏭", state.connected && media.canNext) { RemoteRepository.media("next") }
+                ControlIconButton(Icons.Default.SkipNext, "Next", state.connected && media.canNext) {
+                    RemoteRepository.media("next")
+                }
                 ControlButton("10 ↷", state.connected && media.canSeek) { RemoteRepository.media("seekBy", offsetMs = 10_000) }
             }
         }
@@ -272,6 +285,13 @@ private fun MediaCard(state: AppUiState) {
 private fun ControlButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     OutlinedButton(onClick = onClick, enabled = enabled, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp)) {
         Text(label)
+    }
+}
+
+@Composable
+private fun ControlIconButton(icon: ImageVector, contentDescription: String, enabled: Boolean, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, enabled = enabled, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp)) {
+        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(24.dp))
     }
 }
 

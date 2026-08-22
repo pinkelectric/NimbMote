@@ -19,6 +19,7 @@ import com.bentley.remote.data.RemoteRepository
 import com.bentley.remote.media.RemotePlayer
 import com.bentley.remote.network.RemoteTransport
 import com.bentley.remote.security.SecretStore
+import com.bentley.remote.startup.BootReconnectService
 
 @OptIn(UnstableApi::class)
 class BentleyRemoteService : MediaSessionService() {
@@ -29,6 +30,9 @@ class BentleyRemoteService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+        // A user opening the app may be handing off from the boot-only
+        // connectedDevice service. Keep only one listener on the LAN port.
+        BootReconnectService.stop(this)
         RemoteRepository.initialize(this)
         configureMediaNotification()
         activateRemoteControls("service-started")
@@ -80,6 +84,7 @@ class BentleyRemoteService : MediaSessionService() {
 
     override fun onDestroy() {
         transport.stop()
+        RemoteRepository.unbind(transport)
         mediaSession?.release()
         mediaSession = null
         player?.release()
@@ -170,6 +175,9 @@ class BentleyRemoteService : MediaSessionService() {
         private const val MEDIA_NOTIFICATION_ID = 1001
 
         fun start(context: Context) {
+            // A visible Activity is the permitted point at which the normal
+            // mediaPlayback MediaSessionService may resume after device boot.
+            BootReconnectService.stop(context)
             context.startService(Intent(context, BentleyRemoteService::class.java))
         }
     }

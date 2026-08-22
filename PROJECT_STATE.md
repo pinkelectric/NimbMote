@@ -2,7 +2,8 @@
 
 ## Current stable-test target
 
-- Work in progress: `v0.2.6` installer-only patch from committed/tagged `v0.2.5`.
+- Stable-test release: `v0.2.7` Android-only patch from the committed `v0.2.6`
+  installer release. The Windows binary remains v0.2.6 in this mobile patch.
 - Previous releases remain unchanged at their tags; each release directory contains
   only its APK, Windows Setup EXE and CHANGELOG.
 
@@ -39,6 +40,21 @@
   it is unconditional and independent of the optional desktop task. Android is
   unchanged, so this installer-only release does not duplicate an APK.
 
+## v0.2.7 scope
+
+- Android media controls use Material vector icons for Previous, Play/Pause and
+  Next. In particular, Pause is no longer the differently coloured system emoji.
+- A saved paired Android installation registers for normal boot and APK-update
+  broadcasts. On Android 15+ it starts a dedicated `connectedDevice` foreground
+  service (the saved authenticated LAN connection to the paired PC), which owns
+  a persistent Bentley status notification and reconnect loop without opening
+  the Activity. This is legal from `BOOT_COMPLETED` with the declared
+  `CHANGE_WIFI_STATE` prerequisite.
+- The boot service deliberately does not create a Media3 media-card:
+  Android 15+ prohibits a boot receiver from starting the `mediaPlayback`
+  foreground service. Tapping the status notification, or otherwise opening
+  Bentley Remote, hands off to the normal MediaSessionService.
+
 ## v0.2.1 scope
 
 - Android releases the MediaSession, Media3 notification and remote VolumeProvider
@@ -67,3 +83,8 @@
 - The v0.2.2 Windows-autostart-after-reboot scenario on a third-party hotspot, plus
   existing shutdown/offline, recovery, Edge-tab-artwork and advanced-settings checks
   in `TESTING.md`, require real Galaxy and Windows hardware.
+- The v0.2.7 Android boot receiver must be checked on the actual Galaxy after a
+  normal reboot (not Force Stop): it must show Bentley's status notification
+  and reconnect to the saved PC without opening the app. Then opening the
+  notification must restore the normal Media3 card. Battery restrictions can
+  prevent Android/One UI from delivering or retaining background work.
