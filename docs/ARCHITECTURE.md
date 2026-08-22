@@ -8,9 +8,18 @@ flowchart LR
     GSMTC --> Agent["Bentley Remote tray agent"]
     CoreAudio["Windows Core Audio"] <--> Agent
     Agent -->|"default gateway:45892 / WebSocket"| Phone["Android transport service"]
-    Phone <--> Player["Media3 remote SimpleBasePlayer"]
+Phone <--> Player["Media3 remote SimpleBasePlayer"]
     Player <--> SystemUI["One UI media card + remote volume"]
 ```
+
+## Desktop preview v0.3
+
+При foreground Android Activity посылает один authenticated request. Windows agent
+снимает primary interactive display, уменьшает JPEG и посылает только в уже
+paired active socket. Preview шифруется AES-GCM отдельным HKDF-derived key;
+никакой image не пишется на диск, не отправляется в cloud и не захватывается
+в фоне. Compose держит лишь последний decoded preview до следующего foreground
+request или ручного Refresh.
 
 The phone is both hotspot gateway and Android endpoint. Discovery therefore
 does not use multicast, mDNS, SSID assumptions, or a hardcoded subnet. Windows
@@ -54,4 +63,3 @@ Secrets are 256 random bits. Android encrypts the secret with an AES/GCM key
 inside Android Keystore. Windows protects it with DPAPI CurrentUser. Replay
 nonces are remembered for five minutes. The wire is not encrypted in v1; use a
 private hotspot and see `protocol/README.md` for the threat-model limitation.
-

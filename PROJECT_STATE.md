@@ -2,8 +2,11 @@
 
 ## Current stable-test target
 
-- Stable-test release: `v0.2.8` Android-only patch from the committed `v0.2.7`
-  installer release. The Windows binary remains v0.2.6 in this mobile patch.
+- Stable-test release: `v0.3.0`. Android main screen starts with the paired
+  computer card and an on-demand encrypted primary-desktop preview, then media
+  and Windows volume. Device locale chooses English/Russian strings. Multi-phone
+  pairing remains a v0.4+ backlog item.
+
 - Previous releases remain unchanged at their tags; each release directory contains
   only its APK, Windows Setup EXE and CHANGELOG.
 
@@ -84,8 +87,8 @@
 
 ## Backlog (not included in v0.2.1)
 
-- Desktop screenshot card in Android. Defer to v0.3+ design/scope; no screen capture,
-  streaming or new permissions are included in this patch release.
+- Multiple simultaneous paired phones/tablets for one PC (v0.4+); v0.3 remains
+  deliberately one authenticated paired endpoint.
 
 ## Next hardware checks
 

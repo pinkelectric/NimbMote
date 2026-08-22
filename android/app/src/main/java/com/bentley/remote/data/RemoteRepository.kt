@@ -4,6 +4,7 @@ import android.content.Context
 import com.bentley.remote.model.AppUiState
 import com.bentley.remote.model.RemoteMediaState
 import com.bentley.remote.model.RemoteVolumeState
+import com.bentley.remote.model.DesktopPreviewState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +17,7 @@ interface RemoteCommands {
     fun updateReverse(enabled: Boolean, host: String)
     fun beginPairing(code: String)
     fun systemAction(action: String)
+    fun requestDesktopPreview()
 }
 
 object RemoteRepository {
@@ -51,6 +53,7 @@ object RemoteRepository {
     fun resetPairing() = commands?.resetPairing()
     fun beginPairing(code: String) = commands?.beginPairing(code)
     fun systemAction(action: String) = commands?.systemAction(action)
+    fun requestDesktopPreview() = commands?.requestDesktopPreview()
 
     fun updateReverse(context: Context, enabled: Boolean, host: String) {
         context.getSharedPreferences(PreferencesName, Context.MODE_PRIVATE).edit()
@@ -78,6 +81,7 @@ object RemoteRepository {
     }
     internal fun volumeState(volume: RemoteVolumeState) { mutableState.update { it.copy(volume = volume) } }
     internal fun commandResult(message: String) { mutableState.update { it.copy(commandResult = message) } }
+    internal fun desktopPreview(preview: DesktopPreviewState) { mutableState.update { it.copy(desktopPreview = preview) } }
 
     /**
      * A confirmed remote-PC outage is different from a short reconnect.  Clear cached state here
@@ -90,6 +94,7 @@ object RemoteRepository {
                 connectionLabel = label,
                 media = RemoteMediaState(),
                 volume = RemoteVolumeState(),
+                desktopPreview = DesktopPreviewState(status = "unavailable"),
                 commandResult = null,
             )
         }

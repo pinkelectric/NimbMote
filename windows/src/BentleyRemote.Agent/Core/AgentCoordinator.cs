@@ -7,6 +7,8 @@ using BentleyRemote.Agent.Networking;
 using BentleyRemote.Agent.Protocol;
 using BentleyRemote.Agent.Security;
 using BentleyRemote.Agent.SystemActions;
+using BentleyRemote.Agent.Desktop;
+using BentleyRemote.Agent.Security;
 
 namespace BentleyRemote.Agent.Core;
 
@@ -17,6 +19,7 @@ internal sealed class AgentCoordinator : IAsyncDisposable
     private readonly WindowsVolumeService _volume = new();
     private readonly SystemActionDispatcher _systemActions = new(new WindowsSystemPowerController());
     private readonly ConnectionHub _hub;
+    private readonly DesktopPreviewService _desktopPreview = new();
     private readonly CancellationTokenSource _stop = new();
     private readonly object _statusGate = new();
     private Task? _mediaStartupTask;
@@ -180,6 +183,20 @@ internal sealed class AgentCoordinator : IAsyncDisposable
                     });
                     if (!ok) error = "Unknown or disallowed system action";
                     break;
+                }
+                case "desktop.preview.request":
+                {
+                    var requestId = RequiredString(message.Payload, "requestId");
+                    if (requestId.Length is < 16 or > 80) throw new InvalidOperationException("Invalid desktop preview request.");
+                    var image = _desktopPreview.CapturePrimaryDisplayJpeg();
+                    var capturedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    var secret = _configStore.GetSecret() ?? throw new InvalidOperationException("Pairing secret unavailable.");
+                    var encrypted = DesktopPreviewCrypto.Encrypt(secret, requestId, capturedAt, "image/jpeg", image);
+                    await _hub.SendAsync("desktop.preview", new
+                    {
+                        requestId, capturedAt, mimeType = "image/jpeg", nonce = encrypted.Nonce, ciphertext = encrypted.Ciphertext
+                    }, message.Id);
+                    return;
                 }
                 default:
                     return;

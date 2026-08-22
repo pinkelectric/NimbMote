@@ -57,6 +57,8 @@ Bootstrap не считается PAKE: шестизначный код имее
 | `command.result` | Windows → Android | `ok`, опционально `error` |
 | `heartbeat.ping` | оба направления | `nonce` |
 | `heartbeat.pong` | оба направления | `nonce` |
+| `desktop.preview.request` | Android → Windows | случайный `requestId`; принимается только после authenticated pairing |
+| `desktop.preview` | Windows → Android | `requestId`, `capturedAt`, `mimeType`, AES-GCM `nonce` и `ciphertext` |
 
 `MediaState` содержит `hasSession`, `sessionId`, `sourceAppId`, `title`,
 `artist`, `playbackStatus` (`playing`, `paused`, `stopped`, `closed`,
@@ -67,6 +69,21 @@ Bootstrap не считается PAKE: шестизначный код имее
 
 Media actions: `play`, `pause`, `toggle`, `previous`, `next`, `seek`,
 `seekBy`. Volume actions: `set`, `change`, `mute`, `unmute`, `toggleMute`.
+
+## Desktop preview v0.3
+
+При открытии главного экрана Android запрашивает один текущий preview; пользователь
+может нажать Refresh. Нет polling, streaming, background capture или хранения
+скриншотов: предыдущая картинка живёт только в памяти до следующего запроса.
+Windows захватывает только primary interactive display, уменьшает JPEG до 1280×720
+и отклоняет результат больше 1 MiB.
+
+Обычная аутентификация WebSocket обязательна, но HMAC сам по себе не скрывает
+данные. Поэтому image transfer отдельно шифруется AES-256-GCM. Ключ выводится
+HKDF-SHA256 из pairing secret с domain separation
+`bentley-remote/v1/desktop-preview/aes-256-gcm`; AAD включает requestId,
+capturedAt и MIME type. На Android nonce одноразовый в пяти-минутнем окне,
+размер ciphertext и декодированного JPEG ограничены до decrypt/decode.
 
 ## Аутентификация
 

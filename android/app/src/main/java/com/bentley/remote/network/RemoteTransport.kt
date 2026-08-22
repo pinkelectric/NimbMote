@@ -6,6 +6,8 @@ import com.bentley.remote.data.RemoteCommands
 import com.bentley.remote.data.RemoteRepository
 import com.bentley.remote.model.RemoteMediaState
 import com.bentley.remote.model.RemoteVolumeState
+import com.bentley.remote.model.DesktopPreviewState
+import com.bentley.remote.security.DesktopPreviewCrypto
 import com.bentley.remote.protocol.Envelope
 import com.bentley.remote.protocol.ProtocolCodec
 import com.bentley.remote.security.SecretStore
@@ -52,6 +54,7 @@ class RemoteTransport(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val authenticated = ConcurrentHashMap<WebSocket, Boolean>()
     private val seenNonces = ConcurrentHashMap<String, Long>()
+    private val previewNonces = ConcurrentHashMap<String, Long>()
     private val outgoingChallenges = ConcurrentHashMap<WebSocket, Pair<Long, String>>()
     private val socketGate = Any()
     @Volatile private var activeSocket: WebSocket? = null
@@ -141,6 +144,17 @@ class RemoteTransport(
             if (pendingPowerAction == action) pendingPowerAction = null
             RemoteRepository.commandResult("No authenticated Windows connection")
         }
+    }
+
+    override fun requestDesktopPreview() {
+        if (activeSocket?.isOpen != true) {
+            RemoteRepository.desktopPreview(DesktopPreviewState(status = "unavailable"))
+            return
+        }
+        val requestId = java.util.UUID.randomUUID().toString()
+        RemoteRepository.desktopPreview(RemoteRepository.state.value.desktopPreview.copy(status = "loading"))
+        if (!send("desktop.preview.request", buildJsonObject { put("requestId", requestId) }))
+            RemoteRepository.desktopPreview(RemoteRepository.state.value.desktopPreview.copy(status = "unavailable"))
     }
 
     override fun resetPairing() {
@@ -239,6 +253,7 @@ class RemoteTransport(
                     }
                     "state.media" -> applyMedia(message.payload)
                     "state.volume" -> applyVolume(message.payload)
+                    "desktop.preview" -> applyDesktopPreview(message.payload)
                 }
             }
         }
@@ -398,6 +413,32 @@ class RemoteTransport(
         )
     }
 
+    private fun applyDesktopPreview(payload: JsonObject) {
+        val requestId = payload.string("requestId")
+        val capturedAt = payload.longOrNull("capturedAt") ?: run {
+            RemoteRepository.desktopPreview(RemoteRepository.state.value.desktopPreview.copy(status = "unavailable")); return
+        }
+        val mimeType = payload.string("mimeType")
+        val nonce = payload.string("nonce")
+        if (requestId.length !in 16..80 || mimeType != "image/jpeg" || nonce.length !in 16..64 ||
+            previewNonces.putIfAbsent(nonce, capturedAt) != null) {
+            RemoteRepository.desktopPreview(RemoteRepository.state.value.desktopPreview.copy(status = "unavailable")); return
+        }
+        previewNonces.entries.removeIf { it.value < System.currentTimeMillis() - 300_000 }
+        val image = try {
+            DesktopPreviewCrypto.decrypt(secretStore.getSecret() ?: throw IllegalStateException(), requestId, capturedAt,
+                mimeType, nonce, payload.string("ciphertext"))
+        } catch (_: Exception) { null }
+        if (image == null || image.size > MaxDesktopPreviewBytes) {
+            RemoteRepository.desktopPreview(RemoteRepository.state.value.desktopPreview.copy(status = "unavailable")); return
+        }
+        val decoded = android.graphics.BitmapFactory.decodeByteArray(image, 0, image.size)
+        if (decoded == null || decoded.width > 1280 || decoded.height > 720) {
+            RemoteRepository.desktopPreview(RemoteRepository.state.value.desktopPreview.copy(status = "unavailable")); return
+        }
+        RemoteRepository.desktopPreview(DesktopPreviewState(image, mimeType, capturedAt, "ready"))
+    }
+
     private fun send(type: String, payload: JsonObject): Boolean {
         val socket = activeSocket
         if (socket?.isOpen == true && authenticated[socket] == true) {
@@ -516,6 +557,7 @@ class RemoteTransport(
         const val PairingWindowMs = 10 * 60 * 1_000L
         const val MaxMessageChars = 1_500_000
         const val MaxArtworkBytes = 512 * 1024
+        const val MaxDesktopPreviewBytes = 1_048_576
         const val PowerActionConfirmationWindowMs = 10_000L
         val ImmediateOfflineActions = setOf("shutdown", "restart")
         val SystemActions = setOf("lock", "sleep", "restart", "shutdown")

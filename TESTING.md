@@ -1,4 +1,20 @@
-# Bentley Remote v0.2.8 - Galaxy A56 / One UI 8.5 test plan
+# Bentley Remote v0.3.0 - Galaxy A56 / One UI 8.5 test plan
+
+## v0.3.0 desktop preview and localized UI
+
+- [ ] With the paired PC connected, open Bentley Remote. One current primary
+  desktop preview appears; do not expect repeated capture while the screen is idle.
+- [ ] Tap Refresh after changing the desktop. The card updates once; it is not a
+  live remote desktop and never accepts touch/mouse input.
+- [ ] Lock/disconnect the PC display or force a capture failure: a friendly
+  unavailable state appears, while media, volume and power controls remain usable.
+- [ ] Open Android in Russian and English device locales. All Bentley UI labels,
+  dialogs, pairing and connection-settings text follow the locale.
+- [ ] Confirm the computer card is above media/volume; Shutdown and Restart stay
+  visible while Sleep, Lock and fallback remain under the overflow menu.
+- [ ] Security regression: capture only after an established paired connection;
+  a replayed desktop-preview nonce, altered AES-GCM metadata/tag, malformed JPEG
+  or image over 1 MiB is rejected without crash or replacing the cached preview.
 
 ## v0.2.8 manual-launch regression
 

@@ -36,6 +36,18 @@ data class RemoteVolumeState(
     val muted: Boolean = false,
 )
 
+data class DesktopPreviewState(
+    val image: ByteArray? = null,
+    val mimeType: String? = null,
+    val capturedAt: Long? = null,
+    val status: String = "idle",
+) {
+    override fun equals(other: Any?): Boolean = other is DesktopPreviewState &&
+        mimeType == other.mimeType && capturedAt == other.capturedAt && status == other.status &&
+        (image?.contentEquals(other.image ?: byteArrayOf()) ?: other.image == null)
+    override fun hashCode(): Int = 31 * status.hashCode() + (image?.contentHashCode() ?: 0)
+}
+
 data class AppUiState(
     val connected: Boolean = false,
     val connectionLabel: String = "Starting…",
@@ -46,6 +58,7 @@ data class AppUiState(
     val reverseHost: String = "",
     val media: RemoteMediaState = RemoteMediaState(),
     val volume: RemoteVolumeState = RemoteVolumeState(),
+    val desktopPreview: DesktopPreviewState = DesktopPreviewState(),
     val lastError: String? = null,
     val commandResult: String? = null,
 )
