@@ -2,10 +2,4 @@
     <string name="app_name">Bentley Remote</string>
     <string name="media_notification_channel_name">Media controls</string>
     <string name="media_notification_channel_description">Windows media playback controls</string>
-    <string name="boot_reconnect_channel_name">Bentley reconnect</string>
-    <string name="boot_reconnect_channel_description">Keeps the saved Windows connection available after phone startup</string>
-    <string name="boot_reconnect_starting">Restoring the saved Windows connection…</string>
-    <string name="boot_reconnect_connected">Connected to %1$s</string>
-    <string name="boot_reconnect_waiting">Waiting for the paired computer…</string>
-    <string name="boot_reconnect_computer">Windows</string>
 </resources>

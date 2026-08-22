@@ -2,7 +2,7 @@
 
 ## Current stable-test target
 
-- Stable-test release: `v0.2.7` Android-only patch from the committed `v0.2.6`
+- Stable-test release: `v0.2.8` Android-only patch from the committed `v0.2.7`
   installer release. The Windows binary remains v0.2.6 in this mobile patch.
 - Previous releases remain unchanged at their tags; each release directory contains
   only its APK, Windows Setup EXE and CHANGELOG.
@@ -55,6 +55,15 @@
   foreground service. Tapping the status notification, or otherwise opening
   Bentley Remote, hands off to the normal MediaSessionService.
 
+## v0.2.8 scope
+
+- User-requested UX rollback of the v0.2.7 Android boot mechanism. The boot
+  receiver, `connectedDevice` foreground service, related manifest permissions,
+  strings and handoff ownership code are removed.
+- After phone reboot Bentley Remote does not start itself and creates no Bentley
+  notification. Opening the app manually retains the established connection,
+  MediaSession and standard media card behaviour.
+
 ## v0.2.1 scope
 
 - Android releases the MediaSession, Media3 notification and remote VolumeProvider
@@ -83,8 +92,6 @@
 - The v0.2.2 Windows-autostart-after-reboot scenario on a third-party hotspot, plus
   existing shutdown/offline, recovery, Edge-tab-artwork and advanced-settings checks
   in `TESTING.md`, require real Galaxy and Windows hardware.
-- The v0.2.7 Android boot receiver must be checked on the actual Galaxy after a
-  normal reboot (not Force Stop): it must show Bentley's status notification
-  and reconnect to the saved PC without opening the app. Then opening the
-  notification must restore the normal Media3 card. Battery restrictions can
-  prevent Android/One UI from delivering or retaining background work.
+- The v0.2.8 manual-launch regression needs a real Galaxy check: after a normal
+  reboot Bentley must create no standalone notification; after manual opening,
+  saved pairing, reconnect and the usual Media3 card must work as before.

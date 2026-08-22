@@ -1,4 +1,15 @@
-# Bentley Remote v0.2.7 — Galaxy A56 / One UI 8.5 test plan
+# Bentley Remote v0.2.8 - Galaxy A56 / One UI 8.5 test plan
+
+## v0.2.8 manual-launch regression
+
+- [ ] Reboot the phone. Bentley Remote must not start itself and no standalone
+  Bentley reconnect notification may appear.
+- [ ] Open Bentley Remote manually. The saved pairing must remain available and
+  the app must reconnect normally.
+- [ ] Start or control Windows media. The existing MediaSession media card and
+  remote volume integration must still appear as before.
+- [ ] The older v0.2.7 boot-reconnect checks below are obsolete and must not be
+  used as acceptance criteria for v0.2.8.
 
 Этот документ разделяет проверки, которые можно автоматизировать на любой
 машине, и обязательные аппаратные проверки на реальном Samsung Galaxy A56.
@@ -15,8 +26,8 @@
   подтверждает шаг громкости 1% и состав power UI.
 - [ ] `android\gradlew.bat :app:assembleDebug` проходит с JDK 17 и SDK 35.
 - [ ] В APK manifest присутствуют INTERNET, POST_NOTIFICATIONS,
-  FOREGROUND_SERVICE, FOREGROUND_SERVICE_MEDIA_PLAYBACK,
-  FOREGROUND_SERVICE_CONNECTED_DEVICE, CHANGE_WIFI_STATE и RECEIVE_BOOT_COMPLETED.
+  FOREGROUND_SERVICE и FOREGROUND_SERVICE_MEDIA_PLAYBACK. Boot receiver,
+  connectedDevice service, CHANGE_WIFI_STATE и RECEIVE_BOOT_COMPLETED отсутствуют.
 - [ ] `protocol/examples/state.snapshot.json` читается обеими реализациями.
 - [ ] Windows console tests подтверждают install layout: Program Files path,
   единственное известное имя Run-value и legacy-value cleanup intent.
@@ -51,19 +62,6 @@
 - [ ] На Android центральная кнопка во время Playing показывает одноцветную
   векторную Pause-иконку в той же outline-кнопке, что Play/Previous/Next; жёлтого
   emoji-символа нет.
-- [ ] На уже paired телефоне выполнить обычную перезагрузку, не делая Force Stop:
-  после разблокировки Bentley сам показывает постоянное статусное уведомление
-  «Restoring…», затем «Connected to DELL» либо «Waiting…», и восстанавливает
-  LAN-соединение без открытия Activity. Сохранить результат отдельно для Android
-  14 и ниже и для Android 15+.
-- [ ] На Android 15+ у статуса нет Media3 player-card до первого открытия Bentley:
-  это намеренно, потому что `mediaPlayback` foreground service запрещён прямо из
-  BOOT_COMPLETED. Нажать уведомление: обычная Activity должна открыться, принять
-  соединение от boot-service и восстановить стандартную media-card без ручного
-  pairing. Battery → Unrestricted обязателен; режим Restricted может не доставить
-  BOOT_COMPLETED.
-- [ ] После обновления APK поверх уже paired версии не открывать Activity и
-  проверить тот же старт `connectedDevice` service по `MY_PACKAGE_REPLACED`.
 
 ## 2. Установка и базовый UI — реальный A56
 
