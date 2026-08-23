@@ -199,7 +199,7 @@ internal sealed class AgentCoordinator : IAsyncDisposable
                 {
                     var requestId = RequiredString(message.Payload, "requestId");
                     if (requestId.Length is < 16 or > 80) throw new InvalidOperationException("Invalid desktop preview request.");
-                    var image = _desktopPreview.CapturePrimaryDisplayJpeg();
+                    var image = _desktopPreview.CaptureDesktopWallpaperJpeg();
                     var capturedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                     var secret = _configStore.GetSecret() ?? throw new InvalidOperationException("Pairing secret unavailable.");
                     var encrypted = DesktopPreviewCrypto.Encrypt(secret, requestId, capturedAt, "image/jpeg", image);

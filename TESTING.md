@@ -1,5 +1,14 @@
 # Bentley Remote v0.3.0 - Galaxy A56 / One UI 8.5 test plan
 
+## v0.4.1 Windows wallpaper preview
+
+- [ ] Install only `BentleyRemote-Setup-v0.4.1.exe`; keep Android v0.4.0.
+- [ ] Open or move visible windows on the PC, then tap refresh in Bentley. The
+  image is the Windows wallpaper itself, with no app window, taskbar, cursor or
+  other screen contents.
+- [ ] Change the Windows wallpaper, refresh the Bentley card and verify that the
+  card updates to the new wallpaper image.
+
 ## v0.4.0 reusable local test-package delivery
 
 - [ ] Install both v0.4.0 artifacts: Windows Setup first, then the APK over the
