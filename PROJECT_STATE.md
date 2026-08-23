@@ -2,10 +2,21 @@
 
 ## Current stable-test target
 
-- Stable-test release: `v0.3.0`. Android main screen starts with the paired
+- Stable-test release: `v0.3.1`. Android main screen starts with the paired
   computer card and an on-demand encrypted primary-desktop preview, then media
   and Windows volume. Device locale chooses English/Russian strings. Multi-phone
   pairing remains a v0.4+ backlog item.
+
+## v0.3.1 scope
+
+- Android's AES-GCM additional authenticated data for a desktop preview now uses
+  the protocol's real line-feed bytes, matching the existing Windows agent. This
+  restores accepted authenticated desktop previews; the v0.3.0 Android client
+  encoded the visible `\\n` characters instead, so valid preview tags were rejected.
+- Shutdown and Restart labels use a single line with appropriately compact
+  padding and icon size on a 1080px Galaxy display.
+- This is an Android-only compatible patch. The Windows agent/Setup remains
+  `v0.3.0`; neither reinstall nor repair of Windows is required.
 
 - Previous releases remain unchanged at their tags; each release directory contains
   only its APK, Windows Setup EXE and CHANGELOG.

@@ -1,5 +1,17 @@
 # Bentley Remote v0.3.0 - Galaxy A56 / One UI 8.5 test plan
 
+## v0.3.1 Android desktop-preview repair
+
+- [ ] Install only `BentleyRemote-v0.3.1-release.apk` over v0.3.0. Do not
+  reinstall the Windows Setup: it remains v0.3.0 and the existing pairing stays.
+- [ ] With the PC connected, open Bentley Remote or tap the refresh icon in the
+  computer card. The primary desktop image appears in place of «Рабочий стол
+  недоступен».
+- [ ] Verify the image updates once after a manual refresh; it is neither live
+  streaming nor saved by Bentley.
+- [ ] Check the Russian labels «Выключить» and «Перезагрузить» on the two power
+  buttons: each is one line and remains readable beside its icon.
+
 ## v0.3.0 desktop preview and localized UI
 
 - [ ] With the paired PC connected, open Bentley Remote. One current primary

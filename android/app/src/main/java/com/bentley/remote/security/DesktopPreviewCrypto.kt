@@ -28,7 +28,7 @@ object DesktopPreviewCrypto {
     }
 
     fun aad(requestId: String, capturedAt: Long, mimeType: String) =
-        "bentley-remote/v1/desktop-preview\\n$requestId\\n$capturedAt\\n$mimeType"
+        "bentley-remote/v1/desktop-preview\n$requestId\n$capturedAt\n$mimeType"
 
     private fun hkdf(input: ByteArray, salt: ByteArray, info: ByteArray, length: Int): ByteArray {
         val prk = PairingCrypto.hmac(salt, input)

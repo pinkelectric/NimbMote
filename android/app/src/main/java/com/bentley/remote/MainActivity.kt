@@ -317,6 +317,7 @@ private fun ComputerCard(
                         onClick = { pendingAction = action },
                         enabled = state.connected,
                         modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                     ) {
                         Icon(
                             imageVector = if (action.action == "shutdown") {
@@ -325,9 +326,15 @@ private fun ComputerCard(
                                 Icons.Default.RestartAlt
                             },
                             contentDescription = null,
+                            modifier = Modifier.size(22.dp),
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(stringResource(action.label))
+                        Text(
+                            text = stringResource(action.label),
+                            fontSize = 15.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
                     }
                 }
             }
