@@ -2,10 +2,22 @@
 
 ## Current stable-test target
 
-- Stable-test release: `v0.3.1`. Android main screen starts with the paired
+- Stable-test release: `v0.4.0`. Android main screen starts with the paired
   computer card and an on-demand encrypted primary-desktop preview, then media
   and Windows volume. Device locale chooses English/Russian strings. Multi-phone
   pairing remains a v0.4+ backlog item.
+
+## v0.4.0 scope
+
+- A reusable local Android test-delivery queue accepts one staged APK from any
+  Codex project. The Windows agent notices the queue and offers the package only
+  to its currently paired phone.
+- APK chunks are AES-256-GCM encrypted with the existing pairing secret, bounded
+  to 200 MiB and verified against the staged SHA-256 before Android exposes an
+  ordinary user-approved Install action.
+- The global `android-test-delivery` skill provides the stage script for Bentley,
+  TouchGrass and future local Android projects. This is not cloud upload, silent
+  installation or an arbitrary-file sender.
 
 ## v0.3.1 scope
 

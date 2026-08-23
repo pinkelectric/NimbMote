@@ -48,6 +48,15 @@ data class DesktopPreviewState(
     override fun hashCode(): Int = 31 * status.hashCode() + (image?.contentHashCode() ?: 0)
 }
 
+data class TestPackageState(
+    val label: String? = null,
+    val fileName: String? = null,
+    val sizeBytes: Long = 0,
+    val sha256: String? = null,
+    val status: String = "idle",
+    val localPath: String? = null,
+)
+
 data class AppUiState(
     val connected: Boolean = false,
     val connectionLabel: String = "Starting…",
@@ -59,6 +68,7 @@ data class AppUiState(
     val media: RemoteMediaState = RemoteMediaState(),
     val volume: RemoteVolumeState = RemoteVolumeState(),
     val desktopPreview: DesktopPreviewState = DesktopPreviewState(),
+    val testPackage: TestPackageState = TestPackageState(),
     val lastError: String? = null,
     val commandResult: String? = null,
 )

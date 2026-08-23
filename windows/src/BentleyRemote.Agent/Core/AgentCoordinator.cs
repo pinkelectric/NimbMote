@@ -8,7 +8,7 @@ using BentleyRemote.Agent.Protocol;
 using BentleyRemote.Agent.Security;
 using BentleyRemote.Agent.SystemActions;
 using BentleyRemote.Agent.Desktop;
-using BentleyRemote.Agent.Security;
+using BentleyRemote.Agent.Delivery;
 
 namespace BentleyRemote.Agent.Core;
 
@@ -20,6 +20,9 @@ internal sealed class AgentCoordinator : IAsyncDisposable
     private readonly SystemActionDispatcher _systemActions = new(new WindowsSystemPowerController());
     private readonly ConnectionHub _hub;
     private readonly DesktopPreviewService _desktopPreview = new();
+    private readonly TestPackageStore _testPackages = new();
+    private readonly SemaphoreSlim _testPackageTransfer = new(1, 1);
+    private readonly FileSystemWatcher _testPackageWatcher;
     private readonly CancellationTokenSource _stop = new();
     private readonly object _statusGate = new();
     private Task? _mediaStartupTask;
@@ -33,6 +36,14 @@ internal sealed class AgentCoordinator : IAsyncDisposable
         _hub.MessageReceived += message => _ = HandleMessageAsync(message);
         _media.StateChanged += state => _ = _hub.SendAsync("state.media", state);
         _volume.StateChanged += state => _ = _hub.SendAsync("state.volume", state);
+        _testPackageWatcher = new FileSystemWatcher(TestPackageStore.QueueDirectory, "latest.json")
+        {
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
+            EnableRaisingEvents = true,
+        };
+        _testPackageWatcher.Changed += (_, _) => _ = NotifyTestPackageAsync();
+        _testPackageWatcher.Created += (_, _) => _ = NotifyTestPackageAsync();
+        _testPackageWatcher.Renamed += (_, _) => _ = NotifyTestPackageAsync();
     }
 
     public string Status { get { lock (_statusGate) return _status; } }
@@ -135,11 +146,11 @@ internal sealed class AgentCoordinator : IAsyncDisposable
         if (!IsConnected) SetStatus(false, status);
     }
 
-    private Task SendSnapshotAsync() => _hub.SendAsync("state.snapshot", new
+    private async Task SendSnapshotAsync()
     {
-        media = _media.Current,
-        volume = _volume.Current
-    });
+        await _hub.SendAsync("state.snapshot", new { media = _media.Current, volume = _volume.Current });
+        await NotifyTestPackageAsync();
+    }
 
     private async Task HandleMessageAsync(ProtocolMessage message)
     {
@@ -198,6 +209,12 @@ internal sealed class AgentCoordinator : IAsyncDisposable
                     }, message.Id);
                     return;
                 }
+                case "test.package.request":
+                    await NotifyTestPackageAsync();
+                    return;
+                case "test.package.download":
+                    await SendTestPackageAsync(RequiredString(message.Payload, "transferId"), message.Id);
+                    return;
                 default:
                     return;
             }
@@ -232,9 +249,65 @@ internal sealed class AgentCoordinator : IAsyncDisposable
             ? value.GetSingle()
             : null;
 
+    private Task NotifyTestPackageAsync()
+    {
+        if (_testPackages.TryGetLatest(out var package) && package is not null)
+            return _hub.SendAsync("test.package.available", new
+            {
+                label = package.Label, fileName = package.FileName, sizeBytes = package.SizeBytes, sha256 = package.Sha256
+            });
+        return _hub.SendAsync("test.package.unavailable", new { });
+    }
+
+    private async Task SendTestPackageAsync(string transferId, string? replyTo)
+    {
+        if (transferId.Length is < 16 or > 80 || !_testPackages.TryGetLatest(out var package) || package is null ||
+            !TestPackageStore.Verify(package))
+        {
+            await _hub.SendAsync("test.package.failed", new { error = "No valid staged APK is available" }, replyTo);
+            return;
+        }
+        var secret = _configStore.GetSecret();
+        if (secret is null) return;
+        await _testPackageTransfer.WaitAsync(_stop.Token);
+        try
+        {
+            const int chunkSize = 384 * 1024;
+            var total = checked((int)((package.SizeBytes + chunkSize - 1) / chunkSize));
+            await _hub.SendAsync("test.package.begin", new
+            {
+                transferId, label = package.Label, fileName = package.FileName,
+                sizeBytes = package.SizeBytes, sha256 = package.Sha256, total
+            }, replyTo);
+            await using var input = new FileStream(package.Path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var buffer = new byte[chunkSize];
+            for (var index = 0; index < total; index++)
+            {
+                var read = 0;
+                var expected = (int)Math.Min(chunkSize, package.SizeBytes - (long)index * chunkSize);
+                while (read < expected)
+                {
+                    var count = await input.ReadAsync(buffer.AsMemory(read, expected - read), _stop.Token);
+                    if (count == 0) throw new EndOfStreamException("Staged APK changed while sending.");
+                    read += count;
+                }
+                var encrypted = TestPackageCrypto.Encrypt(secret, transferId, index, total, package.Sha256, buffer[..read]);
+                await _hub.SendAsync("test.package.chunk", new { transferId, index, total, nonce = encrypted.Nonce, ciphertext = encrypted.Ciphertext });
+            }
+            await _hub.SendAsync("test.package.end", new { transferId, sha256 = package.Sha256 });
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or OperationCanceledException)
+        {
+            await _hub.SendAsync("test.package.failed", new { error = "APK transfer failed" }, replyTo);
+        }
+        finally { _testPackageTransfer.Release(); }
+    }
+
     public async ValueTask DisposeAsync()
     {
         _stop.Cancel();
+        _testPackageWatcher.Dispose();
+        _testPackageTransfer.Dispose();
         await _hub.DisposeAsync();
         if (_mediaStartupTask is not null)
         {

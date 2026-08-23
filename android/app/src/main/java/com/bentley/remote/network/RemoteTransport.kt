@@ -7,7 +7,9 @@ import com.bentley.remote.data.RemoteRepository
 import com.bentley.remote.model.RemoteMediaState
 import com.bentley.remote.model.RemoteVolumeState
 import com.bentley.remote.model.DesktopPreviewState
+import com.bentley.remote.model.TestPackageState
 import com.bentley.remote.security.DesktopPreviewCrypto
+import com.bentley.remote.security.TestPackageCrypto
 import com.bentley.remote.protocol.Envelope
 import com.bentley.remote.protocol.ProtocolCodec
 import com.bentley.remote.security.SecretStore
@@ -36,6 +38,8 @@ import org.java_websocket.handshake.ServerHandshake
 import org.java_websocket.server.WebSocketServer
 import java.net.InetSocketAddress
 import java.net.URI
+import java.io.File
+import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
@@ -46,6 +50,7 @@ import kotlin.math.abs
 
 class RemoteTransport(
     private val secretStore: SecretStore,
+    private val deliveryDirectory: File,
     private val onMedia: (RemoteMediaState) -> Unit,
     private val onVolume: (RemoteVolumeState) -> Unit,
     private val onAuthenticated: () -> Unit = {},
@@ -70,6 +75,8 @@ class RemoteTransport(
     private val discovery = DiscoveryListener(secretStore, scope)
     private var pairingCode = "------"
     private var pairingExpiresAt = 0L
+    private var requestedTransferId: String? = null
+    private var incomingPackage: IncomingTestPackage? = null
 
     private val server = object : WebSocketServer(InetSocketAddress("0.0.0.0", AndroidPort)) {
         override fun onOpen(connection: WebSocket, handshake: ClientHandshake) {
@@ -155,6 +162,21 @@ class RemoteTransport(
         RemoteRepository.desktopPreview(RemoteRepository.state.value.desktopPreview.copy(status = "loading"))
         if (!send("desktop.preview.request", buildJsonObject { put("requestId", requestId) }))
             RemoteRepository.desktopPreview(RemoteRepository.state.value.desktopPreview.copy(status = "unavailable"))
+    }
+
+    override fun requestTestPackage() {
+        if (!send("test.package.request", buildJsonObject { }))
+            RemoteRepository.testPackage(RemoteRepository.state.value.testPackage.copy(status = "unavailable"))
+    }
+
+    override fun downloadTestPackage() {
+        val available = RemoteRepository.state.value.testPackage
+        val sha256 = available.sha256 ?: return
+        val transferId = java.util.UUID.randomUUID().toString()
+        if (send("test.package.download", buildJsonObject { put("transferId", transferId) })) {
+            requestedTransferId = transferId
+            RemoteRepository.testPackage(available.copy(status = "waiting", localPath = null))
+        }
     }
 
     override fun resetPairing() {
@@ -254,6 +276,12 @@ class RemoteTransport(
                     "state.media" -> applyMedia(message.payload)
                     "state.volume" -> applyVolume(message.payload)
                     "desktop.preview" -> applyDesktopPreview(message.payload)
+                    "test.package.available" -> applyTestPackageAvailable(message.payload)
+                    "test.package.unavailable" -> RemoteRepository.testPackage(TestPackageState(status = "unavailable"))
+                    "test.package.begin" -> beginTestPackage(message.payload)
+                    "test.package.chunk" -> appendTestPackageChunk(message.payload)
+                    "test.package.end" -> finishTestPackage(message.payload)
+                    "test.package.failed" -> failTestPackage()
                 }
             }
         }
@@ -439,6 +467,77 @@ class RemoteTransport(
         RemoteRepository.desktopPreview(DesktopPreviewState(image, mimeType, capturedAt, "ready"))
     }
 
+    private fun applyTestPackageAvailable(payload: JsonObject) {
+        val label = payload.string("label")
+        val fileName = payload.string("fileName")
+        val sizeBytes = payload.longOrNull("sizeBytes") ?: -1
+        val sha256 = payload.string("sha256")
+        if (label.length !in 1..96 || fileName != File(fileName).name || !fileName.endsWith(".apk", true) ||
+            sizeBytes !in 1L..MaxTestPackageBytes || !sha256.matches(Regex("[0-9A-Fa-f]{64}"))) return
+        RemoteRepository.testPackage(TestPackageState(label, fileName, sizeBytes, sha256.uppercase(), "available"))
+    }
+
+    private fun beginTestPackage(payload: JsonObject) {
+        val transferId = payload.string("transferId")
+        val available = RemoteRepository.state.value.testPackage
+        val total = payload.longOrNull("total")?.toInt() ?: -1
+        if (transferId != requestedTransferId || total !in 1..MaxTestPackageChunks ||
+            payload.string("sha256").uppercase() != available.sha256 || payload.longOrNull("sizeBytes") != available.sizeBytes) {
+            failTestPackage(); return
+        }
+        try {
+            deliveryDirectory.mkdirs()
+            val temporary = File(deliveryDirectory, "$transferId.part")
+            temporary.delete()
+            incomingPackage?.closeAndDelete()
+            incomingPackage = IncomingTestPackage(transferId, total, available, temporary, FileOutputStream(temporary))
+            RemoteRepository.testPackage(available.copy(status = "downloading", localPath = null))
+        } catch (_: Exception) { failTestPackage() }
+    }
+
+    private fun appendTestPackageChunk(payload: JsonObject) {
+        val incoming = incomingPackage ?: return
+        try {
+            val index = payload.longOrNull("index")?.toInt() ?: throw IllegalArgumentException()
+            if (payload.string("transferId") != incoming.transferId || index != incoming.nextIndex ||
+                payload.longOrNull("total")?.toInt() != incoming.total) throw IllegalArgumentException()
+            val chunk = TestPackageCrypto.decrypt(secretStore.getSecret() ?: throw IllegalStateException(), incoming.transferId,
+                index, incoming.total, incoming.packageState.sha256!!, payload.string("nonce"), payload.string("ciphertext"))
+            if (incoming.receivedBytes + chunk.size > incoming.packageState.sizeBytes) throw IllegalArgumentException()
+            incoming.output.write(chunk)
+            incoming.nextIndex++
+            incoming.receivedBytes += chunk.size
+        } catch (_: Exception) { failTestPackage() }
+    }
+
+    private fun finishTestPackage(payload: JsonObject) {
+        val incoming = incomingPackage ?: return
+        try {
+            if (payload.string("transferId") != incoming.transferId || payload.string("sha256").uppercase() != incoming.packageState.sha256 ||
+                incoming.nextIndex != incoming.total || incoming.receivedBytes != incoming.packageState.sizeBytes) throw IllegalArgumentException()
+            incoming.output.close()
+            val digest = MessageDigest.getInstance("SHA-256")
+            incoming.temporary.inputStream().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) { val read = input.read(buffer); if (read <= 0) break; digest.update(buffer, 0, read) }
+            }
+            if (!digest.digest().joinToString("") { "%02X".format(it) }.equals(incoming.packageState.sha256, true)) throw IllegalArgumentException()
+            val finalFile = File(deliveryDirectory, "${incoming.packageState.sha256}.apk")
+            finalFile.delete()
+            if (!incoming.temporary.renameTo(finalFile)) throw IllegalStateException()
+            RemoteRepository.testPackage(incoming.packageState.copy(status = "ready", localPath = finalFile.absolutePath))
+            incomingPackage = null
+            requestedTransferId = null
+        } catch (_: Exception) { failTestPackage() }
+    }
+
+    private fun failTestPackage() {
+        incomingPackage?.closeAndDelete()
+        incomingPackage = null
+        requestedTransferId = null
+        RemoteRepository.testPackage(RemoteRepository.state.value.testPackage.copy(status = "failed", localPath = null))
+    }
+
     private fun send(type: String, payload: JsonObject): Boolean {
         val socket = activeSocket
         if (socket?.isOpen == true && authenticated[socket] == true) {
@@ -556,11 +655,25 @@ class RemoteTransport(
         const val ReversePort = 45893
         const val PairingWindowMs = 10 * 60 * 1_000L
         const val MaxMessageChars = 1_500_000
+        const val MaxTestPackageBytes = 200L * 1024 * 1024
+        const val MaxTestPackageChunks = 600
         const val MaxArtworkBytes = 512 * 1024
         const val MaxDesktopPreviewBytes = 1_048_576
         const val PowerActionConfirmationWindowMs = 10_000L
         val ImmediateOfflineActions = setOf("shutdown", "restart")
         val SystemActions = setOf("lock", "sleep", "restart", "shutdown")
+    }
+
+    private data class IncomingTestPackage(
+        val transferId: String,
+        val total: Int,
+        val packageState: TestPackageState,
+        val temporary: File,
+        val output: FileOutputStream,
+        var nextIndex: Int = 0,
+        var receivedBytes: Long = 0,
+    ) {
+        fun closeAndDelete() { try { output.close() } catch (_: Exception) {}; temporary.delete() }
     }
 }
 

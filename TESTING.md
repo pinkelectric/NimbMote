@@ -1,5 +1,20 @@
 # Bentley Remote v0.3.0 - Galaxy A56 / One UI 8.5 test plan
 
+## v0.4.0 reusable local test-package delivery
+
+- [ ] Install both v0.4.0 artifacts: Windows Setup first, then the APK over the
+  existing Bentley Remote installation. Existing pairing must remain available.
+- [ ] Open Bentley Remote while connected. The temporary «Тестовая сборка» card
+  appears with `Bentley Remote v0.4.0` as the currently staged package.
+- [ ] Tap «Скачать тестовую сборку», wait for the card to change to «Установить
+  тестовую сборку», then accept Android's ordinary install screen. No silent
+  install is expected or allowed.
+- [ ] For another project (such as TouchGrass), its Codex chat stages a verified
+  APK through the global `android-test-delivery` skill. Bentley receives that
+  APK on the same paired phone; only the latest staged APK is retained.
+- [ ] Disconnect or alter the staged APK during transfer: the phone reports a
+  failed verification and must not offer installation.
+
 ## v0.3.1 Android desktop-preview repair
 
 - [ ] Install only `BentleyRemote-v0.3.1-release.apk` over v0.3.0. Do not

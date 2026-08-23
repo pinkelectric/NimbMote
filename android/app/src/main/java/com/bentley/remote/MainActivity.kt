@@ -2,6 +2,8 @@ package com.bentley.remote
 
 import android.Manifest
 import android.content.Intent
+import android.content.Context
+import android.net.Uri
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
@@ -81,12 +83,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.content.FileProvider
 import com.bentley.remote.data.RemoteRepository
 import com.bentley.remote.media.TimelinePredictor
 import com.bentley.remote.model.AppUiState
 import com.bentley.remote.service.BentleyRemoteService
 import kotlinx.coroutines.delay
 import java.text.NumberFormat
+import java.io.File
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -161,6 +165,7 @@ private fun BentleyRemoteScreen() {
                 onRefreshDesktop = RemoteRepository::requestDesktopPreview,
                 onOpenConnectionSettings = { showConnectionSettings = true },
             )
+            TestPackageCard(state = state)
             MediaCard(state = state)
             VolumeCard(state = state)
             PairingCard(state = state)
@@ -188,6 +193,55 @@ private fun BentleyRemoteScreen() {
             onDismiss = { showConnectionSettings = false },
         )
     }
+}
+
+@Composable
+private fun TestPackageCard(state: AppUiState) {
+    val testPackage = state.testPackage
+    if (testPackage.status in setOf("idle", "unavailable")) return
+    val context = LocalContext.current
+    Card {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(stringResource(R.string.test_package), fontWeight = FontWeight.SemiBold)
+            Text(testPackage.label ?: stringResource(R.string.test_package_unavailable))
+            when (testPackage.status) {
+                "available" -> Button(
+                    onClick = RemoteRepository::downloadTestPackage,
+                    enabled = state.connected,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.download_test_package)) }
+                "waiting", "downloading" -> Text(stringResource(R.string.test_package_downloading))
+                "ready" -> Button(
+                    onClick = { testPackage.localPath?.let { installTestPackage(context, it) } },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.install_test_package)) }
+                "failed" -> {
+                    Text(stringResource(R.string.test_package_failed))
+                    OutlinedButton(onClick = RemoteRepository::downloadTestPackage, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.try_again))
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun installTestPackage(context: Context, path: String) {
+    if (Build.VERSION.SDK_INT >= 26 && !context.packageManager.canRequestPackageInstalls()) {
+        context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")))
+        return
+    }
+    val file = File(path)
+    if (!file.isFile) return
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
+    context.startActivity(
+        Intent(Intent.ACTION_VIEW)
+            .setDataAndType(uri, "application/vnd.android.package-archive")
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK),
+    )
 }
 
 @Composable

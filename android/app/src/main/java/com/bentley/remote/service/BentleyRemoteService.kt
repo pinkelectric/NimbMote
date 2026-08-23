@@ -19,6 +19,7 @@ import com.bentley.remote.data.RemoteRepository
 import com.bentley.remote.media.RemotePlayer
 import com.bentley.remote.network.RemoteTransport
 import com.bentley.remote.security.SecretStore
+import java.io.File
 
 @OptIn(UnstableApi::class)
 class BentleyRemoteService : MediaSessionService() {
@@ -34,6 +35,7 @@ class BentleyRemoteService : MediaSessionService() {
         activateRemoteControls("service-started")
         transport = RemoteTransport(
             secretStore = SecretStore(this),
+            deliveryDirectory = File(cacheDir, "test-delivery"),
             onMedia = {
                 RemoteRepository.mediaState(it)
                 diagnosticsHandler.post { player?.updateMedia(it) }
