@@ -2,6 +2,7 @@ package com.bentley.remote.network
 
 import android.util.Base64
 import android.os.SystemClock
+import com.bentley.remote.BuildConfig
 import com.bentley.remote.data.RemoteCommands
 import com.bentley.remote.data.RemoteRepository
 import com.bentley.remote.model.RemoteMediaState
@@ -474,6 +475,10 @@ class RemoteTransport(
         val sha256 = payload.string("sha256")
         if (label.length !in 1..96 || fileName != File(fileName).name || !fileName.endsWith(".apk", true) ||
             sizeBytes !in 1L..MaxTestPackageBytes || !sha256.matches(Regex("[0-9A-Fa-f]{64}"))) return
+        if (!TestPackageVersionPolicy.shouldShow(label, BuildConfig.VERSION_NAME)) {
+            RemoteRepository.testPackage(TestPackageState())
+            return
+        }
         RemoteRepository.testPackage(TestPackageState(label, fileName, sizeBytes, sha256.uppercase(), "available"))
     }
 

@@ -14,6 +14,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -45,6 +46,7 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -72,6 +74,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -285,115 +288,154 @@ private fun ComputerCard(
     val preview = state.desktopPreview
 
     Card {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = state.pairedComputer ?: stringResource(R.string.computer),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = stringResource(
-                            if (state.connected) R.string.connected else R.string.not_connected,
+            DesktopPreview(
+                bytes = preview.image,
+                status = preview.status,
+                modifier = Modifier.matchParentSize(),
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Black.copy(alpha = 0.58f),
+                            0.42f to Color.Black.copy(alpha = 0.08f),
+                            1f to Color.Black.copy(alpha = 0.68f),
                         ),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-                IconButton(onClick = onRefreshDesktop, enabled = state.connected) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = stringResource(R.string.refresh_desktop),
-                    )
-                }
-                Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = stringResource(R.string.more),
+                    ),
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = state.pairedComputer ?: stringResource(R.string.computer),
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = stringResource(
+                                if (state.connected) R.string.connected else R.string.not_connected,
+                            ),
+                            color = Color.White.copy(alpha = 0.86f),
+                            style = MaterialTheme.typography.bodySmall,
                         )
                     }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false },
-                    ) {
-                        secondaryPowerActions.forEach { action ->
+                    IconButton(onClick = onRefreshDesktop, enabled = state.connected) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.refresh_desktop),
+                            tint = Color.White,
+                        )
+                    }
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = stringResource(R.string.more),
+                                tint = Color.White,
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false },
+                        ) {
+                            secondaryPowerActions.forEach { action ->
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(action.label)) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = if (action.action == "sleep") {
+                                                Icons.Default.Bedtime
+                                            } else {
+                                                Icons.Default.Lock
+                                            },
+                                            contentDescription = null,
+                                        )
+                                    },
+                                    enabled = state.connected,
+                                    onClick = {
+                                        menuExpanded = false
+                                        if (action.confirmation == null) {
+                                            RemoteRepository.systemAction(action.action)
+                                        } else {
+                                            pendingAction = action
+                                        }
+                                    },
+                                )
+                            }
                             DropdownMenuItem(
-                                text = { Text(stringResource(action.label)) },
+                                text = { Text(stringResource(R.string.connection_settings)) },
                                 leadingIcon = {
                                     Icon(
-                                        imageVector = if (action.action == "sleep") {
-                                            Icons.Default.Bedtime
-                                        } else {
-                                            Icons.Default.Lock
-                                        },
+                                        imageVector = Icons.Default.SettingsEthernet,
                                         contentDescription = null,
                                     )
                                 },
-                                enabled = state.connected,
                                 onClick = {
                                     menuExpanded = false
-                                    if (action.confirmation == null) {
-                                        RemoteRepository.systemAction(action.action)
-                                    } else {
-                                        pendingAction = action
-                                    }
+                                    onOpenConnectionSettings()
                                 },
                             )
                         }
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.connection_settings)) },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.SettingsEthernet,
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                menuExpanded = false
-                                onOpenConnectionSettings()
-                            },
-                        )
                     }
                 }
-            }
 
-            DesktopPreview(bytes = preview.image, status = preview.status)
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                primaryPowerActions.forEach { action ->
-                    Button(
-                        onClick = { pendingAction = action },
-                        enabled = state.connected,
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Icon(
-                            imageVector = if (action.action == "shutdown") {
-                                Icons.Default.PowerSettingsNew
-                            } else {
-                                Icons.Default.RestartAlt
-                            },
-                            contentDescription = null,
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        primaryPowerActions.forEach { action ->
+                            Button(
+                                onClick = { pendingAction = action },
+                                enabled = state.connected,
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White.copy(alpha = 0.18f),
+                                    contentColor = Color.White,
+                                    disabledContainerColor = Color.Black.copy(alpha = 0.16f),
+                                    disabledContentColor = Color.White.copy(alpha = 0.48f),
+                                ),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.48f)),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                            ) {
+                                Icon(
+                                    imageVector = if (action.action == "shutdown") {
+                                        Icons.Default.PowerSettingsNew
+                                    } else {
+                                        Icons.Default.RestartAlt
+                                    },
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = stringResource(action.label),
+                                    fontSize = 15.sp,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                )
+                            }
+                        }
+                    }
+                    state.commandResult?.let { result ->
                         Text(
-                            text = stringResource(action.label),
-                            fontSize = 15.sp,
-                            maxLines = 1,
-                            softWrap = false,
+                            text = result,
+                            color = Color.White.copy(alpha = 0.9f),
+                            style = MaterialTheme.typography.bodySmall,
                         )
                     }
                 }
-            }
-            state.commandResult?.let { result ->
-                Text(text = result, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -421,18 +463,15 @@ private fun ComputerCard(
 }
 
 @Composable
-private fun DesktopPreview(bytes: ByteArray?, status: String) {
+private fun DesktopPreview(bytes: ByteArray?, status: String, modifier: Modifier = Modifier) {
     val bitmap: ImageBitmap? = remember(bytes) {
         bytes?.let { imageBytes ->
             BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)?.asImageBitmap()
         }
     }
-    val previewModifier = Modifier
-        .fillMaxWidth()
-        .aspectRatio(16f / 9f)
+    val previewModifier = modifier
         .background(
             color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = RoundedCornerShape(12.dp),
         )
 
     if (bitmap != null) {
