@@ -162,7 +162,6 @@ private fun BentleyRemoteScreen() {
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            AppHeader(connected = state.connected)
             ComputerCard(
                 state = state,
                 onRefreshDesktop = RemoteRepository::requestDesktopPreview,
@@ -178,11 +177,6 @@ private fun BentleyRemoteScreen() {
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.battery_settings)) }
-            Text(
-                text = stringResource(R.string.background_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 
@@ -245,36 +239,6 @@ private fun installTestPackage(context: Context, path: String) {
             .setDataAndType(uri, "application/vnd.android.package-archive")
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK),
     )
-}
-
-@Composable
-private fun AppHeader(connected: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(stringResource(R.string.app_name), fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Text(
-                text = stringResource(R.string.app_subtitle),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        StatusPill(connected = connected)
-    }
-}
-
-@Composable
-private fun StatusPill(connected: Boolean) {
-    val color = if (connected) Color(0xFF0B7A3E) else Color(0xFF8A4B00)
-    Box(
-        modifier = Modifier
-            .background(color.copy(alpha = 0.14f), RoundedCornerShape(99.dp))
-            .padding(horizontal = 12.dp, vertical = 7.dp),
-    ) {
-        Text(
-            text = stringResource(if (connected) R.string.connected else R.string.disconnected),
-            color = color,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
 }
 
 @Composable
