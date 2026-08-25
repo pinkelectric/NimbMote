@@ -9,7 +9,6 @@ using BentleyRemote.Agent.Security;
 using BentleyRemote.Agent.SystemActions;
 using BentleyRemote.Agent.Desktop;
 using BentleyRemote.Agent.Delivery;
-using BentleyRemote.Agent.Browser;
 
 namespace BentleyRemote.Agent.Core;
 
@@ -18,7 +17,6 @@ internal sealed class AgentCoordinator : IAsyncDisposable
     private readonly AgentConfigStore _configStore = new();
     private readonly WindowsMediaSessionService _media = new();
     private readonly WindowsVolumeService _volume = new();
-    private readonly BrowserTabController _browser = new();
     private readonly SystemActionDispatcher _systemActions = new(new WindowsSystemPowerController());
     private readonly ConnectionHub _hub;
     private readonly DesktopPreviewService _desktopPreview = new();
@@ -197,13 +195,6 @@ internal sealed class AgentCoordinator : IAsyncDisposable
                     if (!ok) error = "Unknown or disallowed system action";
                     break;
                 }
-                case "command.browser":
-                {
-                    commandAction = RequiredString(message.Payload, "action");
-                    ok = _browser.TryExecute(commandAction, out error);
-                    if (ok && commandAction == "restoreYoutube") _ = ResumeYoutubeAfterReloadAsync();
-                    break;
-                }
                 case "desktop.preview.request":
                 {
                     var requestId = RequiredString(message.Payload, "requestId");
@@ -241,16 +232,6 @@ internal sealed class AgentCoordinator : IAsyncDisposable
             action = commandAction,
             error
         }, message.Id);
-    }
-
-    private async Task ResumeYoutubeAfterReloadAsync()
-    {
-        try
-        {
-            await Task.Delay(TimeSpan.FromSeconds(2), _stop.Token);
-            await _media.ExecuteAsync("play", null, null);
-        }
-        catch (OperationCanceledException) when (_stop.IsCancellationRequested) { }
     }
 
     private static string RequiredString(JsonElement payload, string name) =>

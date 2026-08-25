@@ -168,10 +168,7 @@ private fun BentleyRemoteScreen() {
                 onOpenConnectionSettings = { showConnectionSettings = true },
             )
             TestPackageCard(state = state)
-            MediaCard(
-                state = state,
-                onReloadBrowserTab = { RemoteRepository.browser("reload") },
-            )
+            MediaCard(state = state)
             VolumeCard(state = state)
             PairingCard(state = state)
             OutlinedButton(
@@ -316,20 +313,6 @@ private fun ComputerCard(
                             expanded = menuExpanded,
                             onDismissRequest = { menuExpanded = false },
                         ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.restore_youtube)) },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = null,
-                                    )
-                                },
-                                enabled = state.connected,
-                                onClick = {
-                                    menuExpanded = false
-                                    RemoteRepository.browser("restoreYoutube")
-                                },
-                            )
                             secondaryPowerActions.forEach { action ->
                                 DropdownMenuItem(
                                     text = { Text(stringResource(action.label)) },
@@ -475,21 +458,14 @@ private fun DesktopPreview(bytes: ByteArray?, status: String, modifier: Modifier
 }
 
 @Composable
-private fun MediaCard(
-    state: AppUiState,
-    onReloadBrowserTab: () -> Unit,
-) {
+private fun MediaCard(state: AppUiState) {
     val media = state.media
     Card {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            MediaDetails(
-                mediaArtwork = media.artwork,
-                state = state,
-                onReloadBrowserTab = onReloadBrowserTab,
-            )
+            MediaDetails(mediaArtwork = media.artwork, state = state)
             MediaTimeline(state = state)
             MediaControls(state = state)
         }
@@ -497,11 +473,7 @@ private fun MediaCard(
 }
 
 @Composable
-private fun MediaDetails(
-    mediaArtwork: ByteArray?,
-    state: AppUiState,
-    onReloadBrowserTab: () -> Unit,
-) {
+private fun MediaDetails(mediaArtwork: ByteArray?, state: AppUiState) {
     val media = state.media
     val artwork = remember(mediaArtwork) {
         mediaArtwork?.let { imageBytes ->
@@ -553,15 +525,6 @@ private fun MediaDetails(
             Text(
                 text = media.playbackStatus.replaceFirstChar { it.uppercase() },
                 style = MaterialTheme.typography.bodySmall,
-            )
-        }
-        IconButton(
-            onClick = onReloadBrowserTab,
-            enabled = state.connected,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Refresh,
-                contentDescription = stringResource(R.string.reload_browser_tab),
             )
         }
     }
