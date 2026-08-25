@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.update
 interface RemoteCommands {
     fun media(action: String, positionMs: Long? = null, offsetMs: Long? = null)
     fun volume(action: String, level: Float? = null, delta: Float? = null)
+    fun browser(action: String)
     fun resetPairing()
     fun updateReverse(enabled: Boolean, host: String)
     fun beginPairing(code: String)
@@ -53,6 +54,7 @@ object RemoteRepository {
         commands?.media(action, positionMs, offsetMs)
     fun volume(action: String, level: Float? = null, delta: Float? = null) =
         commands?.volume(action, level, delta)
+    fun browser(action: String) = commands?.browser(action)
     fun resetPairing() = commands?.resetPairing()
     fun beginPairing(code: String) = commands?.beginPairing(code)
     fun systemAction(action: String) = commands?.systemAction(action)

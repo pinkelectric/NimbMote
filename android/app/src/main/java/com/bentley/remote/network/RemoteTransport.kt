@@ -208,6 +208,18 @@ class RemoteTransport(
         })
     }
 
+    override fun browser(action: String) {
+        if (action !in BrowserActions) {
+            RemoteRepository.commandResult("Browser action rejected")
+            return
+        }
+        if (send("command.browser", buildJsonObject { put("action", action) })) {
+            RemoteRepository.commandResult("Browser request sent")
+        } else {
+            RemoteRepository.commandResult("No authenticated Windows connection")
+        }
+    }
+
     private fun refreshPairingCode() {
         if (secretStore.isPaired) {
             pairingCode = "PAIRED"
@@ -667,6 +679,7 @@ class RemoteTransport(
         const val PowerActionConfirmationWindowMs = 10_000L
         val ImmediateOfflineActions = setOf("shutdown", "restart")
         val SystemActions = setOf("lock", "sleep", "restart", "shutdown")
+        val BrowserActions = setOf("reload", "restoreYoutube")
     }
 
     private data class IncomingTestPackage(

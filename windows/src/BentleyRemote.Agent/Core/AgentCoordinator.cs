@@ -9,6 +9,7 @@ using BentleyRemote.Agent.Security;
 using BentleyRemote.Agent.SystemActions;
 using BentleyRemote.Agent.Desktop;
 using BentleyRemote.Agent.Delivery;
+using BentleyRemote.Agent.Browser;
 
 namespace BentleyRemote.Agent.Core;
 
@@ -17,6 +18,7 @@ internal sealed class AgentCoordinator : IAsyncDisposable
     private readonly AgentConfigStore _configStore = new();
     private readonly WindowsMediaSessionService _media = new();
     private readonly WindowsVolumeService _volume = new();
+    private readonly BrowserTabController _browser = new();
     private readonly SystemActionDispatcher _systemActions = new(new WindowsSystemPowerController());
     private readonly ConnectionHub _hub;
     private readonly DesktopPreviewService _desktopPreview = new();
@@ -156,7 +158,7 @@ internal sealed class AgentCoordinator : IAsyncDisposable
     {
         bool ok;
         string? error = null;
-        string? systemAction = null;
+        string? commandAction = null;
         try
         {
             switch (message.Type)
@@ -181,18 +183,25 @@ internal sealed class AgentCoordinator : IAsyncDisposable
                 }
                 case "system.action":
                 {
-                    systemAction = RequiredString(message.Payload, "action");
-                    ok = _systemActions.TrySchedule(systemAction, TimeSpan.FromMilliseconds(900), succeeded =>
+                    commandAction = RequiredString(message.Payload, "action");
+                    ok = _systemActions.TrySchedule(commandAction, TimeSpan.FromMilliseconds(900), succeeded =>
                     {
                         if (!succeeded)
                             _ = _hub.SendAsync("command.result", new
                             {
                                 ok = false,
-                                action = systemAction,
+                                action = commandAction,
                                 error = "Windows could not complete the accepted system action"
                             }, message.Id);
                     });
                     if (!ok) error = "Unknown or disallowed system action";
+                    break;
+                }
+                case "command.browser":
+                {
+                    commandAction = RequiredString(message.Payload, "action");
+                    ok = _browser.TryExecute(commandAction, out error);
+                    if (ok && commandAction == "restoreYoutube") _ = ResumeYoutubeAfterReloadAsync();
                     break;
                 }
                 case "desktop.preview.request":
@@ -229,9 +238,19 @@ internal sealed class AgentCoordinator : IAsyncDisposable
         await _hub.SendAsync("command.result", new
         {
             ok,
-            action = systemAction,
+            action = commandAction,
             error
         }, message.Id);
+    }
+
+    private async Task ResumeYoutubeAfterReloadAsync()
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2), _stop.Token);
+            await _media.ExecuteAsync("play", null, null);
+        }
+        catch (OperationCanceledException) when (_stop.IsCancellationRequested) { }
     }
 
     private static string RequiredString(JsonElement payload, string name) =>

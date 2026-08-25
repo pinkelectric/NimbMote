@@ -53,6 +53,7 @@ Bootstrap не считается PAKE: шестизначный код имее
 | `state.volume` | Windows → Android | объект `VolumeState` |
 | `command.media` | Android → Windows | `action`, опционально `positionMs`/`offsetMs` |
 | `command.volume` | Android → Windows | `action`, опционально `level`/`delta` |
+| `command.browser` | Android → Windows | allowlist: `reload`, `restoreYoutube` |
 | `system.action` | Android → Windows | только allowlist: `lock`, `sleep`, `restart`, `shutdown` |
 | `command.result` | Windows → Android | `ok`, опционально `error` |
 | `heartbeat.ping` | оба направления | `nonce` |
@@ -69,6 +70,8 @@ Bootstrap не считается PAKE: шестизначный код имее
 
 Media actions: `play`, `pause`, `toggle`, `previous`, `next`, `seek`,
 `seekBy`. Volume actions: `set`, `change`, `mute`, `unmute`, `toggleMute`.
+Browser `reload` sends F5 only when Microsoft Edge is the foreground window.
+`restoreYoutube` additionally requires a foreground YouTube tab and requests play after reload.
 
 ## Desktop preview v0.3
 

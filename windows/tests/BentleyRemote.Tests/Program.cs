@@ -8,6 +8,7 @@ using BentleyRemote.Agent.SystemActions;
 using BentleyRemote.Agent.Media;
 using BentleyRemote.Agent.Core;
 using BentleyRemote.Agent.Installation;
+using BentleyRemote.Agent.Browser;
 
 var tests = new (string Name, Func<Task> Run)[]
 {
@@ -19,7 +20,8 @@ var tests = new (string Name, Func<Task> Run)[]
     ("loopback discovery responder", TestLoopbackDiscoveryAsync),
     ("artwork revision rejects stale metadata", () => { TestArtworkRevision(); return Task.CompletedTask; }),
     ("startup readiness retry remains bounded", () => { TestStartupReadiness(); return Task.CompletedTask; }),
-    ("managed install path and startup command", () => { TestInstallLayout(); return Task.CompletedTask; })
+    ("managed install path and startup command", () => { TestInstallLayout(); return Task.CompletedTask; }),
+    ("browser command allowlist", () => { TestBrowserActions(); return Task.CompletedTask; })
 };
 
 foreach (var test in tests)
@@ -202,6 +204,13 @@ static void TestInstallLayout()
             AgentInstallLayout.RunValueName == "Bentley Remote" &&
             AgentInstallLayout.LegacyRunValueName == "BentleyRemote.Agent",
         "startup registry intent changed unexpectedly");
+}
+
+static void TestBrowserActions()
+{
+    Require(BrowserTabController.IsSupportedAction("reload"), "reload browser action rejected");
+    Require(BrowserTabController.IsSupportedAction("restoreYoutube"), "restore browser action rejected");
+    Require(!BrowserTabController.IsSupportedAction("openUrl"), "arbitrary browser action accepted");
 }
 
 static void Require(bool condition, string message)
