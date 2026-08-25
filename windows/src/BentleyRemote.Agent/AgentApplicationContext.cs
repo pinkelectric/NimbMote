@@ -8,6 +8,7 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
 {
     private readonly AgentCoordinator _coordinator = new();
     private readonly NotifyIcon _trayIcon;
+    private readonly Icon _applicationIcon;
     private readonly ToolStripMenuItem _statusItem;
     private readonly ToolStripMenuItem _pairItem;
     private readonly System.Windows.Forms.Timer _timer;
@@ -28,10 +29,11 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
             new ToolStripSeparator(),
             new ToolStripMenuItem("Exit", null, ExitClicked)
         });
+        _applicationIcon = DeskoraTrayIcon.Create();
         _trayIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
-            Text = "Bentley Remote",
+            Icon = _applicationIcon,
+            Text = "Deskora",
             ContextMenuStrip = menu,
             Visible = true
         };
@@ -59,7 +61,7 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
         {
             var answer = MessageBox.Show(
                 "This removes the existing pairing before accepting a new code. Continue?",
-                "Bentley Remote",
+                "Deskora",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
             if (answer != DialogResult.Yes) return;
@@ -83,9 +85,9 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
         var version = assembly?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
             ?? assembly?.GetName().Version?.ToString() ?? "unknown";
         MessageBox.Show(
-            $"Bentley Remote Agent\nVersion: {version}\nExecutable: {Environment.ProcessPath}\n\n" +
+            $"Deskora Agent\nVersion: {version}\nExecutable: {Environment.ProcessPath}\n\n" +
             $"Installed path: {AgentInstallLayout.ExecutablePath(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles))}",
-            "Bentley Remote diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            "Deskora diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     private async void ExitClicked(object? sender, EventArgs e)
@@ -104,6 +106,7 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
         {
             _timer.Dispose();
             _trayIcon.Dispose();
+            _applicationIcon.Dispose();
         }
         base.Dispose(disposing);
     }

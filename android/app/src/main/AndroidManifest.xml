@@ -11,10 +11,10 @@
 
     <application
         android:allowBackup="false"
-        android:icon="@drawable/ic_stat_remote"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.BentleyRemote"
+        android:theme="@style/Theme.Deskora"
         android:usesCleartextTraffic="true">
 
         <activity

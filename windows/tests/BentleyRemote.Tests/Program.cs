@@ -194,12 +194,12 @@ static void TestInstallLayout()
 {
     const string programFiles = @"C:\Program Files";
     var executable = AgentInstallLayout.ExecutablePath(programFiles);
-    Require(executable == @"C:\Program Files\Bentley Remote\BentleyRemote.Agent.exe",
+    Require(executable == @"C:\Program Files\Deskora\BentleyRemote.Agent.exe",
         "Program Files executable path is wrong");
     Require(AgentInstallLayout.StartupCommand(programFiles) == $"\"{executable}\"",
         "startup registration command is wrong");
     Require(AgentInstallLayout.RunKeyPath == @"Software\Microsoft\Windows\CurrentVersion\Run" &&
-            AgentInstallLayout.RunValueName == "Bentley Remote" &&
+            AgentInstallLayout.RunValueName == "Deskora" &&
             AgentInstallLayout.LegacyRunValueName == "BentleyRemote.Agent",
         "startup registry intent changed unexpectedly");
 }

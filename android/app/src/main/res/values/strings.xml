@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Bentley Remote</string>
+    <string name="app_name">Deskora</string>
     <string name="media_notification_channel_name">Media controls</string>
     <string name="media_notification_channel_description">Windows media playback controls</string>
     <string name="app_subtitle">Windows media on this phone</string>

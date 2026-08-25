@@ -1,4 +1,4 @@
-# Bentley Remote
+# Deskora
 
 Локальная связка Android + Windows 11 для управления системной медиасессией и
 общей громкостью Windows с Samsung Galaxy A56. Облака, аккаунтов, аналитики,

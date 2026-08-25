@@ -4,7 +4,7 @@ internal sealed class PairingDialog : Form
 {
     public PairingDialog(string code)
     {
-        Text = "Pair Bentley Remote";
+        Text = "Pair Deskora";
         Width = 390;
         Height = 230;
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -17,7 +17,7 @@ internal sealed class PairingDialog : Form
             AutoSize = false,
             Dock = DockStyle.Top,
             Height = 74,
-            Text = "Open Bentley Remote on Android, enter this code and tap Search. The code expires after 10 minutes.",
+            Text = "Open Deskora on Android, enter this code and tap Search. The code expires after 10 minutes.",
             Padding = new Padding(0, 0, 0, 10)
         };
         var codeLabel = new Label

@@ -3,10 +3,10 @@ param()
 
 $ErrorActionPreference = 'Stop'
 
-$productName = 'Bentley Remote'
+$productName = 'Deskora'
 $processName = 'BentleyRemote.Agent'
 $runKeyPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-$runValueName = 'Bentley Remote'
+$runValueName = 'Deskora'
 $legacyRunValueName = 'BentleyRemote.Agent'
 $installRoot = Join-Path $env:LOCALAPPDATA 'BentleyRemote'
 $agentDirectory = Join-Path $installRoot 'Agent'
