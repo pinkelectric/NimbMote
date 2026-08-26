@@ -6,9 +6,9 @@ identity.
 
 ## Mark
 
-The mark is a deep-plum rounded tile with two lilac desktop/device frames and a
-single connection point between them. It must stay simple enough to recognise
-at Android launcher and Windows tray sizes.
+The mark is a deep-plum rounded tile with a wide horizontal desktop monitor and
+a smaller vertical phone overlapping its corner. It must stay simple enough to
+recognise at Android launcher and Windows tray sizes.
 
 ## Compatibility note
 
