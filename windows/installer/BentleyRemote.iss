@@ -54,9 +54,18 @@ Name: "{autodesktop}\Deskora"; Filename: "{app}\{#AppExeName}"; Tasks: desktopic
 Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Deskora"; ValueData: """{app}\{#AppExeName}"""; Flags: uninsdeletevalue
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Flags: nowait skipifsilent
+Filename: "{app}\{#AppExeName}"; Parameters: "--show-pairing"; Flags: nowait skipifsilent; Check: IsFirstDeskoraInstall
+Filename: "{app}\{#AppExeName}"; Flags: nowait skipifsilent; Check: not IsFirstDeskoraInstall
 
 [Code]
+function IsFirstDeskoraInstall: Boolean;
+begin
+  { This checks the stable AppId before Inno writes the new version's uninstall key.
+    Updating an existing Deskora installation must stay quiet. }
+  Result := not RegKeyExists(HKLM,
+    'Software\Microsoft\Windows\CurrentVersion\Uninstall\{B6BFE4C7-B8E5-4F77-96AB-50D0511F4295}_is1');
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;

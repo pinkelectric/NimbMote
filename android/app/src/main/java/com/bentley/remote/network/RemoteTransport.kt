@@ -147,7 +147,7 @@ class RemoteTransport(
                 delay(PowerActionConfirmationWindowMs)
                 if (pendingPowerAction == action) pendingPowerAction = null
             }
-            RemoteRepository.commandResult("Request sent: $action")
+            RemoteRepository.commandResult(null)
         } else {
             if (pendingPowerAction == action) pendingPowerAction = null
             RemoteRepository.commandResult("No authenticated Windows connection")
@@ -251,7 +251,7 @@ class RemoteTransport(
             "command.result" -> if (authenticated[connection] == true) {
                 val ok = message.payload.boolean("ok")
                 val error = message.payload.string("error")
-                RemoteRepository.commandResult(if (ok) "Windows accepted the action" else error.ifBlank { "Windows rejected the action" })
+                RemoteRepository.commandResult(if (ok) null else error.ifBlank { "Windows rejected the action" })
                 val action = message.payload.stringOrNull("action")
                 if (RemoteOfflinePolicy.shouldReleaseImmediatelyForPowerAction(pendingPowerAction, action, ok)) {
                     pendingPowerAction = null

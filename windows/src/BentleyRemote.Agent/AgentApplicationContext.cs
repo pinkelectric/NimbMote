@@ -12,10 +12,13 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
     private readonly ToolStripMenuItem _statusItem;
     private readonly ToolStripMenuItem _pairItem;
     private readonly System.Windows.Forms.Timer _timer;
+    private readonly bool _showPairingOnStart;
+    private bool _initialPairingShown;
     private bool _disposing;
 
-    public AgentApplicationContext()
+    public AgentApplicationContext(bool showPairingOnStart = false)
     {
+        _showPairingOnStart = showPairingOnStart;
         _statusItem = new ToolStripMenuItem("Starting…") { Enabled = false };
         _pairItem = new ToolStripMenuItem("Pair with phone…", null, PairClicked);
         var menu = new ContextMenuStrip();
@@ -53,6 +56,14 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
         _pairItem.Text = _coordinator.IsPaired
             ? $"Re-pair {_coordinator.PairedPhoneName ?? "phone"}…"
             : "Pair with phone…";
+
+        if (_showPairingOnStart && !_initialPairingShown && !_coordinator.IsPaired)
+        {
+            _initialPairingShown = true;
+            var pairing = _coordinator.BeginPairing();
+            using var dialog = new PairingDialog(pairing.Code);
+            dialog.ShowDialog();
+        }
     }
 
     private async void PairClicked(object? sender, EventArgs e)

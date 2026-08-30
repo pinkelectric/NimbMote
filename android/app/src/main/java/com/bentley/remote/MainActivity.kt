@@ -162,21 +162,31 @@ private fun BentleyRemoteScreen() {
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            ComputerCard(
-                state = state,
-                onRefreshDesktop = RemoteRepository::requestDesktopPreview,
-                onOpenConnectionSettings = { showConnectionSettings = true },
-            )
-            TestPackageCard(state = state)
-            MediaCard(state = state)
-            VolumeCard(state = state)
-            PairingCard(state = state)
-            OutlinedButton(
-                onClick = {
-                    context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(stringResource(R.string.battery_settings)) }
+            if (state.pairedComputer == null) {
+                PairingCard(
+                    state = state,
+                    onOpenConnectionSettings = { showConnectionSettings = true },
+                )
+            } else {
+                ComputerCard(
+                    state = state,
+                    onRefreshDesktop = RemoteRepository::requestDesktopPreview,
+                    onOpenConnectionSettings = { showConnectionSettings = true },
+                )
+                TestPackageCard(state = state)
+                MediaCard(state = state)
+                VolumeCard(state = state)
+                PairingCard(
+                    state = state,
+                    onOpenConnectionSettings = { showConnectionSettings = true },
+                )
+                OutlinedButton(
+                    onClick = {
+                        context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.battery_settings)) }
+            }
         }
     }
 
@@ -729,7 +739,10 @@ private fun ConnectionSettingsDialog(
 }
 
 @Composable
-private fun PairingCard(state: AppUiState) {
+private fun PairingCard(
+    state: AppUiState,
+    onOpenConnectionSettings: () -> Unit,
+) {
     var code by remember { mutableStateOf("") }
     Card(
         colors = CardDefaults.cardColors(
@@ -742,6 +755,8 @@ private fun PairingCard(state: AppUiState) {
         ) {
             Text(stringResource(R.string.secure_pairing), fontWeight = FontWeight.SemiBold)
             if (state.pairedComputer == null) {
+                Text(stringResource(R.string.first_run_step_one))
+                Text(stringResource(R.string.first_run_step_two))
                 OutlinedTextField(
                     value = code,
                     onValueChange = { value -> code = value.filter(Char::isDigit).take(6) },
@@ -754,9 +769,15 @@ private fun PairingCard(state: AppUiState) {
                     enabled = code.length == 6,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.search_and_pair)) }
+                Text(stringResource(R.string.first_run_step_three))
                 Text(stringResource(R.string.pairing_hint))
-                OutlinedButton(onClick = { RemoteRepository.resetPairing() }) {
-                    Text(stringResource(R.string.reset_pairing))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { RemoteRepository.resetPairing() }) {
+                        Text(stringResource(R.string.reset_pairing))
+                    }
+                    OutlinedButton(onClick = onOpenConnectionSettings) {
+                        Text(stringResource(R.string.connection_settings))
+                    }
                 }
             } else {
                 Text(stringResource(R.string.paired_with, state.pairedComputer))

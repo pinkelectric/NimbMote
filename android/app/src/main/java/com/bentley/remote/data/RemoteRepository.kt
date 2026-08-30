@@ -85,7 +85,7 @@ object RemoteRepository {
         }
     }
     internal fun volumeState(volume: RemoteVolumeState) { mutableState.update { it.copy(volume = volume) } }
-    internal fun commandResult(message: String) { mutableState.update { it.copy(commandResult = message) } }
+    internal fun commandResult(message: String?) { mutableState.update { it.copy(commandResult = message) } }
     internal fun desktopPreview(preview: DesktopPreviewState) { mutableState.update { it.copy(desktopPreview = preview) } }
     internal fun testPackage(testPackage: TestPackageState) { mutableState.update { it.copy(testPackage = testPackage) } }
 
