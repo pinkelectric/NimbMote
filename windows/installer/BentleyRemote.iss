@@ -31,10 +31,11 @@ OutputBaseFilename=Deskora-Setup-v{#ProductVersion}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile={#SourceDir}\Deskora.ico
 CloseApplications=yes
 RestartApplications=no
 UninstallDisplayName=Deskora Agent
-UninstallDisplayIcon={app}\{#AppExeName}
+UninstallDisplayIcon={app}\Deskora.ico
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -45,8 +46,8 @@ Name: "desktopicon"; Description: "Создать ярлык на рабочем
 [Icons]
 ; Use the explicit common Start-menu folder. {group} depends on shell/group-page
 ; resolution and was not discoverable after a clean v0.2.5 installation.
-Name: "{commonprograms}\Deskora\Deskora Agent"; Filename: "{app}\{#AppExeName}"
-Name: "{autodesktop}\Deskora"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{commonprograms}\Deskora\Deskora Agent"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\Deskora.ico"
+Name: "{autodesktop}\Deskora"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\Deskora.ico"; Tasks: desktopicon
 
 [Registry]
 ; Per-machine startup launches the installed agent for the signed-in user. It
@@ -76,6 +77,9 @@ begin
       ewWaitUntilTerminated, ResultCode);
   end;
   if CurStep = ssPostInstall then begin
+    { Replace only the two known legacy shortcuts with their Deskora equivalents. }
+    DeleteFile(ExpandConstant('{commonprograms}\Bentley Remote\Bentley Remote Agent.lnk'));
+    DeleteFile(ExpandConstant('{autodesktop}\Bentley Remote.lnk'));
     { v0.1.1/v0.2.3 used per-user Run values. Remove only these known names;
       no third-party startup entry is enumerated or modified. }
     RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run',
