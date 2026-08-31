@@ -34,7 +34,7 @@ export default function Home() {
       <nav className="site-nav">
         <a className="brand" href="#top" aria-label="Deskora home"><span className="brand-mark" aria-hidden="true"><span /><span /></span><span>Deskora</span></a>
         <div className="nav-links" aria-label="Page navigation"><a href="#how-it-works">How it works</a><a href="#features">Features</a><a href="#downloads">Download</a></div>
-        <a className="nav-github" href="#github"><GitBranch size={16} /> GitHub soon</a>
+        <a className="nav-github" href="https://github.com/pinkelectric/Deskora" target="_blank" rel="noreferrer"><GitBranch size={16} /> GitHub</a>
       </nav>
 
       <section className="hero" id="top">
@@ -71,7 +71,7 @@ export default function Home() {
 
       <section className="showcase">
         <div className="showcase-copy"><p className="eyebrow"><span /> Familiar, but yours</p><h2>Keep the controls<br />where they belong.</h2><p>The full remote lives in Deskora. When media is playing, the usual Android media controls stay available from the notification shade too.</p><div className="tiny-stat"><Music2 /> The phone mirrors Windows media — it does not play a second audio stream.</div></div>
-        <div className="showcase-images"><figure className="shot-menu"><img src="/screenshots/deskora-menu.jpg" alt="Deskora menu with sleep, lock and connection settings" /></figure><figure className="shot-notification"><img src="/screenshots/deskora-notification.jpg" alt="Deskora media controls in the Android notification shade" /></figure></div>
+        <div className="showcase-images"><figure className="shot-menu"><img src="/screenshots/deskora-menu.jpg" alt="Deskora media controls in Android quick settings" /></figure><figure className="shot-notification"><img src="/screenshots/deskora-notification.jpg" alt="Deskora media controls in the Android notification shade" /></figure></div>
       </section>
 
       <section className="download-section" id="downloads">
@@ -83,7 +83,7 @@ export default function Home() {
       </section>
 
       <section className="privacy-strip"><LockKeyhole /><p><strong>Your connection stays yours.</strong> Deskora works between your paired phone and PC on the same local network. No account is needed.</p><a href="/privacy">Privacy details <ChevronRight /></a></section>
-      <footer id="github"><a className="brand" href="#top"><span className="brand-mark" aria-hidden="true"><span /><span /></span><span>Deskora</span></a><p>Windows media, on your phone.</p><span>© 2026 Deskora · Public GitHub repository is being prepared.</span></footer>
+      <footer id="github"><a className="brand" href="#top"><span className="brand-mark" aria-hidden="true"><span /><span /></span><span>Deskora</span></a><p>Windows media, on your phone.</p><a href="https://github.com/pinkelectric/Deskora" target="_blank" rel="noreferrer">© 2026 Deskora · View the public GitHub repository</a></footer>
     </main>
   );
 }
