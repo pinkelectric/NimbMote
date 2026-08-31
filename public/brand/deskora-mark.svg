@@ -1,0 +1,16 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="deskora-surface" x1="18" y1="12" x2="114" y2="122" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#BF9AFF" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#FF7967" stop-opacity="0.34"/>
+    </linearGradient>
+    <linearGradient id="deskora-stroke" x1="31" y1="25" x2="95" y2="101" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF9FF"/>
+      <stop offset="1" stop-color="#E9D9FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="32" fill="url(#deskora-surface)"/>
+  <rect x="8.75" y="8.75" width="110.5" height="110.5" rx="31.25" stroke="#FFFFFF" stroke-opacity="0.42" stroke-width="1.5"/>
+  <rect x="29" y="32" width="27" height="64" rx="8" stroke="url(#deskora-stroke)" stroke-width="6"/>
+  <rect x="72" y="45" width="35" height="39" rx="8" stroke="url(#deskora-stroke)" stroke-width="6"/>
+</svg>
