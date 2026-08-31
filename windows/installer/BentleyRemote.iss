@@ -60,14 +60,21 @@ Filename: "{app}\{#AppExeName}"; Flags: nowait skipifsilent; Check: not IsFirstD
 
 [Code]
 var
+  WasInstalledBeforeSetup: Boolean;
   RemoveUserData: Boolean;
+
+function InitializeSetup(): Boolean;
+begin
+  { [Run] is evaluated after Inno has created the new uninstall key. Record the
+    prior state here instead, otherwise every fresh install looks like an update. }
+  WasInstalledBeforeSetup := RegKeyExists(HKLM,
+    'Software\Microsoft\Windows\CurrentVersion\Uninstall\{B6BFE4C7-B8E5-4F77-96AB-50D0511F4295}_is1');
+  Result := True;
+end;
 
 function IsFirstDeskoraInstall: Boolean;
 begin
-  { This checks the stable AppId before Inno writes the new version's uninstall key.
-    Updating an existing Deskora installation must stay quiet. }
-  Result := not RegKeyExists(HKLM,
-    'Software\Microsoft\Windows\CurrentVersion\Uninstall\{B6BFE4C7-B8E5-4F77-96AB-50D0511F4295}_is1');
+  Result := not WasInstalledBeforeSetup;
 end;
 
 function InitializeUninstall(): Boolean;
