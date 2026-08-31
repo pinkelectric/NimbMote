@@ -2,10 +2,23 @@
 
 ## Current stable-test target
 
-- Stable-test release: `v0.4.1`. Android main screen starts with the paired
+- Stable-test release: `v0.7.7`. Android main screen starts with the paired
   computer card and an on-demand encrypted primary-desktop preview, then media
   and Windows volume. Device locale chooses English/Russian strings. Multi-phone
   pairing remains a v0.4+ backlog item.
+
+## v0.7.7 scope
+
+- Android's paired-LAN listener recreates its UDP socket after a network-level
+  failure, and the live transport periodically confirms it is still listening.
+  This repairs the case where a Windows reboot left Android open but unable to
+  answer a new discovery probe until the user force-stopped the app.
+- Returning to the Android Activity reasserts the existing local service. This
+  is not phone-boot autostart and does not restore the rejected permanent
+  Deskora status notification.
+- Android and Windows use the new Deskora two-device mark: vertical phone on
+  the left and horizontal desktop display on the right. The Windows executable,
+  installer, Start-menu and desktop shortcuts share the same source icon.
 
 ## v0.4.0 scope
 

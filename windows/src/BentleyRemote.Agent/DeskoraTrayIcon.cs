@@ -11,19 +11,15 @@ internal static class DeskoraTrayIcon
         using (var graphics = Graphics.FromImage(bitmap))
         {
             graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            graphics.Clear(Color.FromArgb(48, 40, 61));
+            graphics.Clear(Color.FromArgb(90, 59, 134));
 
-            using var pen = new Pen(Color.FromArgb(211, 184, 255), 2.5f)
+            using var pen = new Pen(Color.FromArgb(255, 249, 255), 2.5f)
             {
                 LineJoin = LineJoin.Round
             };
-            graphics.DrawRoundedRectangle(pen, 4, 6, 19, 12, 2);
-            graphics.DrawRoundedRectangle(pen, 22, 14, 7, 13, 2);
-
-            using var dot = new SolidBrush(Color.FromArgb(211, 184, 255));
-            graphics.FillEllipse(dot, 24.5f, 24, 2.5f, 2.5f);
-            using var baseBrush = new SolidBrush(Color.FromArgb(154, 117, 216));
-            graphics.FillRoundedRectangle(baseBrush, 10, 20, 8, 2.5f, 1.25f);
+            // The phone is deliberately vertical on the left; the larger display is horizontal on the right.
+            graphics.DrawRoundedRectangle(pen, 5, 6, 8, 20, 2);
+            graphics.DrawRoundedRectangle(pen, 17, 11, 11, 9, 2);
         }
 
         var handle = bitmap.GetHicon();
@@ -46,12 +42,6 @@ internal static class DeskoraTrayIcon
     {
         using var path = RoundedRectangle(x, y, width, height, radius);
         graphics.DrawPath(pen, path);
-    }
-
-    private static void FillRoundedRectangle(this Graphics graphics, Brush brush, float x, float y, float width, float height, float radius)
-    {
-        using var path = RoundedRectangle(x, y, width, height, radius);
-        graphics.FillPath(brush, path);
     }
 
     private static GraphicsPath RoundedRectangle(float x, float y, float width, float height, float radius)

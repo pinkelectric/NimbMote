@@ -78,6 +78,7 @@ class RemoteTransport(
     private var pairingExpiresAt = 0L
     private var requestedTransferId: String? = null
     private var incomingPackage: IncomingTestPackage? = null
+    @Volatile private var started = false
 
     private val server = object : WebSocketServer(InetSocketAddress("0.0.0.0", AndroidPort)) {
         override fun onOpen(connection: WebSocket, handshake: ClientHandshake) {
@@ -100,10 +101,16 @@ class RemoteTransport(
         }
     }
 
+    @Synchronized
     fun start(reverseEnabled: Boolean, reverseHost: String) {
         this.reverseEnabled = reverseEnabled
         this.reverseHost = reverseHost
         refreshPairingCode()
+        if (started) {
+            discovery.start()
+            return
+        }
+        started = true
         server.isReuseAddr = true
         server.start()
         discovery.start()
@@ -624,6 +631,10 @@ class RemoteTransport(
     private suspend fun heartbeatLoop() {
         while (scope.isActive) {
             delay(10_000)
+            // Some Android builds invalidate a UDP socket during Wi-Fi changes without
+            // stopping the process. Keep the LAN responder alive so a rebooted Windows
+            // agent can discover this phone again.
+            discovery.start()
             val socket = activeSocket ?: continue
             if (System.currentTimeMillis() - lastSeenAt > 35_000) {
                 // A hard PC shutdown may not produce TCP FIN/RST.  This is the positive
@@ -639,6 +650,7 @@ class RemoteTransport(
     }
 
     fun stop() {
+        started = false
         discovery.stop()
         heartbeatJob?.cancel()
         reverseJob?.cancel()

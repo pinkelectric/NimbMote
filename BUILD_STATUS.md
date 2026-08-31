@@ -1,10 +1,9 @@
-# Build status - v0.4.1 - verified wallpaper-preview installer patch - 2026-08-23
+# Build status — v0.7.7 — Android reconnect recovery and new Deskora icon — 2026-08-31
 
-- Android v0.4.0 is unchanged and retained; no Android source or protocol change
-  is included in this installer-only patch.
-- Windows: Release build and self-contained `win-x64` publish passed; the native
-  Inno Setup package compiled successfully.
-- Signed APK verified with v2 and v3 using the established Android debug test
-  certificate SHA-256 `34cb31a3fb393e034948eba1ba007215ea8025a4759fc8bf4dff2e3cbd2c7629`.
-- Reused v0.4.0 APK SHA-256: `FF63E23E8C2A382F448E4C6CDD73E238469A7D209BF84B997D14824CE22F7790`.
-- Setup SHA-256: `608F5ECE341076DE8E172D6A8D9DF24118874305A8B3EEF3505609F48CB4CAE0`.
+- Android debug APK built as `0.7.7` / `7008`; its APK Signature Scheme v2
+  signature was verified with the established Android debug certificate SHA-256
+  `34CB31A3FB393E034948EBA1BA007215EA8025A4759FC8BF4DFF2E3CBD2C7629`.
+- Windows agent tests passed. A self-contained Release `win-x64` publish and
+  the native Inno Setup package compiled successfully.
+- APK SHA-256: `5773B484AC2948143B8148A36B3C39A61ECD58D8AAD91AA1ABA7A4201828C347`.
+- Setup SHA-256: `2B16BDA4E2F14555B37B1FD2419499EC0DCBB77049A975ABB5736234A6AAC333`.

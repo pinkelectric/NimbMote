@@ -8,6 +8,7 @@ import com.bentley.remote.security.SecretStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -41,23 +42,37 @@ class DiscoveryListener(
     data class BootstrapCandidate(val address: InetAddress, val agentId: String)
 
     fun start() {
+        if (job?.isActive == true) return
         job = scope.launch(Dispatchers.IO) {
-            val listener = DatagramSocket(null).apply {
-                reuseAddress = true
-                bind(InetSocketAddress(DiscoveryPort))
-            }
-            socket = listener
-            val buffer = ByteArray(4096)
             while (isActive) {
-                val packet = DatagramPacket(buffer, buffer.size)
-                try { listener.receive(packet) } catch (_: Exception) { if (!isActive) break else continue }
-                val data = packet.data.copyOfRange(packet.offset, packet.offset + packet.length)
                 try {
-                    val root = Json.parseToJsonElement(data.toString(StandardCharsets.UTF_8)) as? JsonObject ?: continue
-                    when (root.string("type")) {
-                        ProbeType -> handlePaired(root, packet.address, packet.port, listener)
+                    DatagramSocket(null).use { listener ->
+                        listener.reuseAddress = true
+                        listener.bind(InetSocketAddress(DiscoveryPort))
+                        socket = listener
+                        val buffer = ByteArray(4096)
+                        while (isActive && !listener.isClosed) {
+                            val packet = DatagramPacket(buffer, buffer.size)
+                            try {
+                                listener.receive(packet)
+                                val data = packet.data.copyOfRange(packet.offset, packet.offset + packet.length)
+                                val root = Json.parseToJsonElement(data.toString(StandardCharsets.UTF_8)) as? JsonObject ?: continue
+                                if (root.string("type") == ProbeType) {
+                                    handlePaired(root, packet.address, packet.port, listener)
+                                }
+                            } catch (exception: Exception) {
+                                if (!isActive || listener.isClosed) break
+                                Log.w(LogTag, "Discovery listener failed; reopening", exception)
+                                break
+                            }
+                        }
                     }
-                } catch (_: Exception) { }
+                } catch (exception: Exception) {
+                    if (isActive) Log.w(LogTag, "Could not bind discovery listener; retrying", exception)
+                } finally {
+                    socket = null
+                }
+                if (isActive) delay(RestartDelayMs)
             }
         }
     }
@@ -114,7 +129,12 @@ class DiscoveryListener(
         return candidates.values.toList()
     }
 
-    fun stop() { job?.cancel(); socket?.close(); socket = null }
+    fun stop() {
+        job?.cancel()
+        job = null
+        socket?.close()
+        socket = null
+    }
 
     private fun handlePaired(root: JsonObject, source: InetAddress, sourcePort: Int, listener: DatagramSocket) {
         val secret = secretStore.getSecret() ?: return
@@ -170,5 +190,6 @@ class DiscoveryListener(
         const val DiscoveryDomain = "bentley-remote-discovery"
         const val BootstrapDomain = "bentley-remote-bootstrap"
         const val LogTag = "BentleyRemote.Discovery"
+        const val RestartDelayMs = 1_000L
     }
 }

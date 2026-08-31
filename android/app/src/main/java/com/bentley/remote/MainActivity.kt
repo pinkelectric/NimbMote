@@ -121,6 +121,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Reassert the local transport when the user returns after Android has reclaimed it.
+        BentleyRemoteService.start(this)
         RemoteRepository.requestDesktopPreview()
     }
 }

@@ -57,6 +57,10 @@ class BentleyRemoteService : MediaSessionService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        if (::transport.isInitialized) {
+            val settings = RemoteRepository.state.value
+            transport.start(settings.reverseEnabled, settings.reverseHost)
+        }
         return START_STICKY
     }
 
