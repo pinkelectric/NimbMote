@@ -771,13 +771,17 @@ private fun PairingCard(
                 ) { Text(stringResource(R.string.search_and_pair)) }
                 Text(stringResource(R.string.first_run_step_three))
                 Text(stringResource(R.string.pairing_hint))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { RemoteRepository.resetPairing() }) {
+                OutlinedButton(
+                    onClick = onOpenConnectionSettings,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.connection_settings))
+                }
+                OutlinedButton(
+                    onClick = { RemoteRepository.resetPairing() },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                         Text(stringResource(R.string.reset_pairing))
-                    }
-                    OutlinedButton(onClick = onOpenConnectionSettings) {
-                        Text(stringResource(R.string.connection_settings))
-                    }
                 }
             } else {
                 Text(stringResource(R.string.paired_with, state.pairedComputer))

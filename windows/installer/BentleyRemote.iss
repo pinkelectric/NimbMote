@@ -59,12 +59,35 @@ Filename: "{app}\{#AppExeName}"; Parameters: "--show-pairing"; Flags: nowait ski
 Filename: "{app}\{#AppExeName}"; Flags: nowait skipifsilent; Check: not IsFirstDeskoraInstall
 
 [Code]
+var
+  RemoveUserData: Boolean;
+
 function IsFirstDeskoraInstall: Boolean;
 begin
   { This checks the stable AppId before Inno writes the new version's uninstall key.
     Updating an existing Deskora installation must stay quiet. }
   Result := not RegKeyExists(HKLM,
     'Software\Microsoft\Windows\CurrentVersion\Uninstall\{B6BFE4C7-B8E5-4F77-96AB-50D0511F4295}_is1');
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  { Normal removal preserves pairing by default. The user can explicitly choose
+    a clean slate for testing or handing the computer to another person. }
+  RemoveUserData := False;
+  if not UninstallSilent then
+    RemoveUserData := MsgBox(
+      'Удалить также сохранённое сопряжение и все данные Deskora?' + #13#10 + #13#10 +
+      'Да — полное удаление: следующая установка будет как первая.' + #13#10 +
+      'Нет — удалить только программу и оставить данные для будущей установки.',
+      mbConfirmation, MB_YESNO) = IDYES;
+  Result := True;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if (CurUninstallStep = usPostUninstall) and RemoveUserData then
+    DelTree(ExpandConstant('{localappdata}\BentleyRemote'), True, True, True);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
