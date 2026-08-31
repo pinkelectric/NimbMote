@@ -61,7 +61,7 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
         {
             _initialPairingShown = true;
             var pairing = _coordinator.BeginPairing();
-            using var dialog = new PairingDialog(pairing.Code);
+            using var dialog = new PairingDialog(pairing.Code, () => _coordinator.IsPaired);
             dialog.ShowDialog();
         }
     }
@@ -79,7 +79,7 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
             await _coordinator.ForgetPhoneAsync();
         }
         var pairing = _coordinator.BeginPairing();
-        using var dialog = new PairingDialog(pairing.Code);
+        using var dialog = new PairingDialog(pairing.Code, () => _coordinator.IsPaired);
         dialog.ShowDialog();
     }
 
