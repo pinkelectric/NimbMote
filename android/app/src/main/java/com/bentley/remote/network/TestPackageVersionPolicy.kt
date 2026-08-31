@@ -3,7 +3,9 @@ package com.bentley.remote.network
 /** Shows Deskora's own delivery card only for a strictly newer installed version. */
 internal object TestPackageVersionPolicy {
     private val deskoraLabel = Regex(
-        pattern = "^(?:Deskora|Bentley Remote) v(\\d+)\\.(\\d+)\\.(\\d+)$",
+        // A release may include a short human-readable note after its version.
+        // It is still Deskora's own package and must not be shown after install.
+        pattern = "^(?:Deskora|Bentley Remote) v(\\d+)\\.(\\d+)\\.(\\d+)(?:\\s+.*)?$",
         option = RegexOption.IGNORE_CASE,
     )
 

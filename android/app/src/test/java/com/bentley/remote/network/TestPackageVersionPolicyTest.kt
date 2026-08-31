@@ -10,6 +10,7 @@ class TestPackageVersionPolicyTest {
         assertFalse(TestPackageVersionPolicy.shouldShow("Deskora v0.5.0", "0.5.0"))
         assertFalse(TestPackageVersionPolicy.shouldShow("Deskora v0.4.1", "0.5.0"))
         assertFalse(TestPackageVersionPolicy.shouldShow("Bentley Remote v0.5.0", "0.5.0"))
+        assertFalse(TestPackageVersionPolicy.shouldShow("Deskora v0.5.0 — reconnect recovery", "0.5.0"))
     }
 
     @Test fun OtherProjectsAreNotHiddenByBentleysVersion() {

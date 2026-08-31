@@ -2,10 +2,19 @@
 
 ## Current stable-test target
 
-- Stable-test release: `v0.7.7`. Android main screen starts with the paired
+- Stable-test release: `v0.7.8`. Android main screen starts with the paired
   computer card and an on-demand encrypted primary-desktop preview, then media
   and Windows volume. Device locale chooses English/Russian strings. Multi-phone
   pairing remains a v0.4+ backlog item.
+
+## v0.7.8 scope
+
+- Deskora's test-package version matcher accepts a human-readable release note
+  after `Deskora vMAJOR.MINOR.PATCH`. The exact installed Deskora version is now
+  hidden correctly instead of looking like a permanent available update.
+- This is an Android behaviour patch. Protocol and Windows-agent behaviour stay
+  unchanged; a matching v0.7.8 installer is packaged only to preserve one
+  release number across both platforms.
 
 ## v0.7.7 scope
 
