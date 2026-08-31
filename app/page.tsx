@@ -16,8 +16,10 @@ import {
 
 import { Button } from '@/components/ui/button';
 
-const windowsDownload = '/downloads/Deskora-Setup-v0.7.6.exe';
-const androidDownload = '/downloads/Deskora-v0.7.4-test.apk';
+const windowsDownload =
+  'https://raw.githubusercontent.com/pinkelectric/Deskora/main/public/downloads/Deskora-Setup-v0.7.6.exe';
+const androidDownload =
+  'https://raw.githubusercontent.com/pinkelectric/Deskora/main/public/downloads/Deskora-v0.7.4-test.apk';
 
 const features = [
   { icon: Music2, title: 'Media, where you need it', text: 'Play, pause, skip, seek and see the artwork from your Windows media session.' },
