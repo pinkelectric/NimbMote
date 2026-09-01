@@ -16,6 +16,7 @@ import androidx.media3.session.MediaSessionService
 import com.bentley.remote.MainActivity
 import com.bentley.remote.R
 import com.bentley.remote.data.RemoteRepository
+import com.bentley.remote.media.RemoteMediaNotificationPolicy
 import com.bentley.remote.media.RemotePlayer
 import com.bentley.remote.network.RemoteTransport
 import com.bentley.remote.security.SecretStore
@@ -68,13 +69,20 @@ class BentleyRemoteService : MediaSessionService() {
         session: MediaSession,
         startInForegroundRequired: Boolean,
     ) {
+        // A paused Windows track is still an active remote-control session.  Keeping this
+        // notification foreground prevents One UI from discarding its play control shortly
+        // after pause, while an empty/idle player still produces no generic status card.
+        val keepRemoteControlsVisible = RemoteMediaNotificationPolicy.shouldKeepRemoteControlsVisible(
+            session.player.playbackState,
+            session.player.currentTimeline.isEmpty,
+        )
         Log.i(
             TAG,
             "Media notification update requested: " +
-                "startInForegroundRequired=$startInForegroundRequired, " +
+                "startInForegroundRequired=${startInForegroundRequired || keepRemoteControlsVisible}, " +
                 "sessionAdded=${isSessionAdded(session)}",
         )
-        super.onUpdateNotification(session, startInForegroundRequired)
+        super.onUpdateNotification(session, startInForegroundRequired || keepRemoteControlsVisible)
         diagnosticsHandler.post {
             logMediaNotificationState(session, "notification-updated")
         }
