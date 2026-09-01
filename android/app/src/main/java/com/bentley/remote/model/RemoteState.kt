@@ -1,0 +1,74 @@
+package com.bentley.remote.model
+
+data class RemoteMediaState(
+    val hasSession: Boolean = false,
+    val sessionId: String? = null,
+    val sourceAppId: String? = null,
+    val title: String = "Nothing playing",
+    val artist: String = "",
+    val playbackStatus: String = "closed",
+    val positionMs: Long? = null,
+    val durationMs: Long? = null,
+    /** Monotonic receipt time of the authoritative Windows timeline snapshot. */
+    val timelineReceivedAtElapsedMs: Long = 0,
+    val canSeek: Boolean = false,
+    val canPrevious: Boolean = false,
+    val canNext: Boolean = false,
+    val artworkMime: String? = null,
+    val artwork: ByteArray? = null,
+) {
+    val isPlaying: Boolean get() = playbackStatus == "playing"
+
+    override fun equals(other: Any?): Boolean = other is RemoteMediaState &&
+        hasSession == other.hasSession && sessionId == other.sessionId &&
+        sourceAppId == other.sourceAppId && title == other.title && artist == other.artist &&
+        playbackStatus == other.playbackStatus && positionMs == other.positionMs &&
+        durationMs == other.durationMs && canSeek == other.canSeek &&
+        canPrevious == other.canPrevious && canNext == other.canNext &&
+        artworkMime == other.artworkMime &&
+        (artwork?.contentEquals(other.artwork ?: byteArrayOf()) ?: (other.artwork == null))
+
+    override fun hashCode(): Int = 31 * title.hashCode() + (artwork?.contentHashCode() ?: 0)
+}
+
+data class RemoteVolumeState(
+    val level: Float = 0f,
+    val muted: Boolean = false,
+)
+
+data class DesktopPreviewState(
+    val image: ByteArray? = null,
+    val mimeType: String? = null,
+    val capturedAt: Long? = null,
+    val status: String = "idle",
+) {
+    override fun equals(other: Any?): Boolean = other is DesktopPreviewState &&
+        mimeType == other.mimeType && capturedAt == other.capturedAt && status == other.status &&
+        (image?.contentEquals(other.image ?: byteArrayOf()) ?: other.image == null)
+    override fun hashCode(): Int = 31 * status.hashCode() + (image?.contentHashCode() ?: 0)
+}
+
+data class TestPackageState(
+    val label: String? = null,
+    val fileName: String? = null,
+    val sizeBytes: Long = 0,
+    val sha256: String? = null,
+    val status: String = "idle",
+    val localPath: String? = null,
+)
+
+data class AppUiState(
+    val connected: Boolean = false,
+    val connectionLabel: String = "Starting…",
+    val pairedComputer: String? = null,
+    val pairingCode: String = "------",
+    val pairingExpiresAt: Long = 0,
+    val reverseEnabled: Boolean = false,
+    val reverseHost: String = "",
+    val media: RemoteMediaState = RemoteMediaState(),
+    val volume: RemoteVolumeState = RemoteVolumeState(),
+    val desktopPreview: DesktopPreviewState = DesktopPreviewState(),
+    val testPackage: TestPackageState = TestPackageState(),
+    val lastError: String? = null,
+    val commandResult: String? = null,
+)

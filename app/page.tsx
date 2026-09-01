@@ -8,6 +8,7 @@ import {
   MonitorSmartphone,
   Monitor,
   Music2,
+  PanelsTopLeft,
   ShieldCheck,
   Smartphone,
   Volume2,
@@ -17,14 +18,15 @@ import {
 import { Button } from '@/components/ui/button';
 
 const windowsDownload =
-  'https://raw.githubusercontent.com/pinkelectric/Deskora/main/public/downloads/Deskora-Setup-v0.7.6.exe';
+  'https://github.com/pinkelectric/Deskora/raw/main/releases/v0.8.0/Deskora-Setup-v0.8.0.exe';
 const androidDownload =
-  'https://raw.githubusercontent.com/pinkelectric/Deskora/main/public/downloads/Deskora-v0.7.4-test.apk';
+  'https://github.com/pinkelectric/Deskora/raw/main/releases/v0.8.0/Deskora-v0.8.0-debug.apk';
 
 const features = [
   { icon: Music2, title: 'Media, where you need it', text: 'Play, pause, skip, seek and see the artwork from your Windows media session.' },
   { icon: Volume2, title: 'Windows volume on your phone', text: 'Adjust the computer volume or mute it without reaching for the keyboard.' },
   { icon: Monitor, title: 'Your desktop at a glance', text: 'See the current wallpaper, connection state and power controls in one card.' },
+  { icon: PanelsTopLeft, title: 'Play/Pause in Quick Settings', text: 'Keep a one-tap Deskora control beside Wi-Fi and Bluetooth, even after Android hides the media card.' },
   { icon: ShieldCheck, title: 'Paired on your network', text: 'Deskora connects your phone and PC over the same Wi-Fi with a six-digit pairing code.' },
 ];
 
@@ -34,7 +36,7 @@ export default function Home() {
       <nav className="site-nav">
         <a className="brand" href="#top" aria-label="Deskora home"><span className="brand-mark" aria-hidden="true"><span /><span /></span><span>Deskora</span></a>
         <div className="nav-links" aria-label="Page navigation"><a href="#how-it-works">How it works</a><a href="#features">Features</a><a href="#downloads">Download</a></div>
-        <a className="nav-github" href="#github"><GitBranch size={16} /> GitHub soon</a>
+        <a className="nav-github" href="https://github.com/pinkelectric/Deskora" target="_blank" rel="noreferrer"><GitBranch size={16} /> GitHub</a>
       </nav>
 
       <section className="hero" id="top">
@@ -71,19 +73,19 @@ export default function Home() {
 
       <section className="showcase">
         <div className="showcase-copy"><p className="eyebrow"><span /> Familiar, but yours</p><h2>Keep the controls<br />where they belong.</h2><p>The full remote lives in Deskora. When media is playing, the usual Android media controls stay available from the notification shade too.</p><div className="tiny-stat"><Music2 /> The phone mirrors Windows media — it does not play a second audio stream.</div></div>
-        <div className="showcase-images"><figure className="shot-menu"><img src="/screenshots/deskora-menu.jpg" alt="Deskora menu with sleep, lock and connection settings" /></figure><figure className="shot-notification"><img src="/screenshots/deskora-notification.jpg" alt="Deskora media controls in the Android notification shade" /></figure></div>
+        <div className="showcase-images"><figure className="shot-menu"><img src="/screenshots/deskora-menu.jpg" alt="Deskora media controls in Android quick settings" /></figure><figure className="shot-notification"><img src="/screenshots/deskora-notification.jpg" alt="Deskora media controls in the Android notification shade" /></figure></div>
       </section>
 
       <section className="download-section" id="downloads">
         <div><p className="eyebrow"><span /> First public test</p><h2>Try Deskora today.</h2><p>Install the agent first, then the Android test build. The Android package is not yet distributed by Google Play, so Android will ask for your approval to install it.</p></div>
         <div className="download-cards">
-          <a className="download-card" href={windowsDownload} download><span className="download-icon windows"><MonitorSmartphone /></span><span><strong>Deskora Agent</strong><small>Windows 10 / 11 · v0.7.6</small></span><Download /></a>
-          <a className="download-card" href={androidDownload} download><span className="download-icon android"><Smartphone /></span><span><strong>Deskora for Android</strong><small>Test APK · v0.7.4</small></span><Download /></a>
+          <a className="download-card" href={windowsDownload} download><span className="download-icon windows"><MonitorSmartphone /></span><span><strong>Deskora Agent</strong><small>Windows 10 / 11 · v0.8.0</small></span><Download /></a>
+          <a className="download-card" href={androidDownload} download><span className="download-icon android"><Smartphone /></span><span><strong>Deskora for Android</strong><small>Test APK · v0.8.0</small></span><Download /></a>
         </div>
       </section>
 
       <section className="privacy-strip"><LockKeyhole /><p><strong>Your connection stays yours.</strong> Deskora works between your paired phone and PC on the same local network. No account is needed.</p><a href="/privacy">Privacy details <ChevronRight /></a></section>
-      <footer id="github"><a className="brand" href="#top"><span className="brand-mark" aria-hidden="true"><span /><span /></span><span>Deskora</span></a><p>Windows media, on your phone.</p><span>© 2026 Deskora · Public GitHub repository is being prepared.</span></footer>
+      <footer id="github"><a className="brand" href="#top"><span className="brand-mark" aria-hidden="true"><span /><span /></span><span>Deskora</span></a><p>Windows media, on your phone.</p><a href="https://github.com/pinkelectric/Deskora" target="_blank" rel="noreferrer">© 2026 Deskora · View the public GitHub repository</a></footer>
     </main>
   );
 }

@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "type": "state.snapshot",
+  "id": "2337df8e-7a50-4e3b-8a89-9eb4c0bbf781",
+  "replyTo": null,
+  "sentAt": 1786392000000,
+  "payload": {
+    "media": {
+      "hasSession": true,
+      "sessionId": "Microsoft.MicrosoftEdge_8wekyb3d8bbwe!MSEDGE",
+      "sourceAppId": "Microsoft.MicrosoftEdge_8wekyb3d8bbwe!MSEDGE",
+      "title": "Example video",
+      "artist": "Example channel",
+      "playbackStatus": "playing",
+      "positionMs": 42000,
+      "durationMs": 180000,
+      "canSeek": true,
+      "canPrevious": true,
+      "canNext": true,
+      "artworkMime": null,
+      "artworkBase64": null
+    },
+    "volume": { "level": 0.42, "muted": false }
+  }
+}
+

@@ -1,4 +1,21 @@
-# dependencies
+# Android / Gradle
+.gradle/
+**/build/
+android/local.properties
+android/.gradle-dist/
+android/.kotlin/
+
+# .NET / Visual Studio
+**/bin/
+**/obj/
+.vs/
+*.user
+
+# Local packaging and logs
+artifacts/
+*.log
+
+# Website dependencies and generated files
 /node_modules
 /.pnp
 .pnp.*
