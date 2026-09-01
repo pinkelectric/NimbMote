@@ -61,6 +61,9 @@ class BentleyRemoteService : MediaSessionService() {
         if (::transport.isInitialized) {
             val settings = RemoteRepository.state.value
             transport.start(settings.reverseEnabled, settings.reverseHost)
+            if (intent?.action == ACTION_TOGGLE_WINDOWS_MEDIA) {
+                transport.toggleMediaWhenConnected()
+            }
         }
         return START_STICKY
     }
@@ -182,9 +185,16 @@ class BentleyRemoteService : MediaSessionService() {
         private const val TAG = "BentleyRemoteService"
         private const val MEDIA_NOTIFICATION_CHANNEL_ID = "bentley_remote_media"
         private const val MEDIA_NOTIFICATION_ID = 1001
+        private const val ACTION_TOGGLE_WINDOWS_MEDIA = "com.bentley.remote.action.TOGGLE_WINDOWS_MEDIA"
 
         fun start(context: Context) {
             context.startService(Intent(context, BentleyRemoteService::class.java))
+        }
+
+        fun toggleWindowsMedia(context: Context) {
+            context.startService(
+                Intent(context, BentleyRemoteService::class.java).setAction(ACTION_TOGGLE_WINDOWS_MEDIA),
+            )
         }
     }
 }

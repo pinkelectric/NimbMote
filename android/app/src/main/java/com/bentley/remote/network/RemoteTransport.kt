@@ -73,6 +73,8 @@ class RemoteTransport(
     private var offlineJob: Job? = null
     private var pendingPowerAction: String? = null
     private var pendingPowerActionExpiry: Job? = null
+    private var pendingQuickMediaAction: String? = null
+    private var pendingQuickMediaActionExpiry: Job? = null
     private val discovery = DiscoveryListener(secretStore, scope)
     private var pairingCode = "------"
     private var pairingExpiresAt = 0L
@@ -200,12 +202,27 @@ class RemoteTransport(
     }
 
     override fun media(action: String, positionMs: Long?, offsetMs: Long?) {
+        sendMedia(action, positionMs, offsetMs)
+    }
+
+    /** A quick-settings tap may wake Android before Windows reconnects; keep one toggle briefly. */
+    fun toggleMediaWhenConnected() {
+        if (sendMedia("toggle")) return
+        pendingQuickMediaActionExpiry?.cancel()
+        pendingQuickMediaAction = "toggle"
+        RemoteRepository.connection(false, "Connecting to Windows…")
+        pendingQuickMediaActionExpiry = scope.launch {
+            delay(QuickTileReconnectWindowMs)
+            if (pendingQuickMediaAction == "toggle") pendingQuickMediaAction = null
+        }
+    }
+
+    private fun sendMedia(action: String, positionMs: Long? = null, offsetMs: Long? = null): Boolean =
         send("command.media", buildJsonObject {
             put("action", action)
             positionMs?.let { put("positionMs", it) }
             offsetMs?.let { put("offsetMs", it) }
         })
-    }
 
     override fun volume(action: String, level: Float?, delta: Float?) {
         send("command.volume", buildJsonObject {
@@ -351,6 +368,11 @@ class RemoteTransport(
         lastSeenAt = System.currentTimeMillis()
         RemoteRepository.connection(true, label)
         onAuthenticated()
+        pendingQuickMediaAction?.let { action ->
+            pendingQuickMediaAction = null
+            pendingQuickMediaActionExpiry?.cancel()
+            sendMedia(action)
+        }
     }
 
     /**
@@ -373,6 +395,7 @@ class RemoteTransport(
 
     private fun scheduleOfflineRelease(label: String, delayMs: Long) {
         offlineJob?.cancel()
+        pendingQuickMediaActionExpiry?.cancel()
         pendingPowerActionExpiry?.cancel()
         offlineJob = scope.launch {
             if (delayMs > 0) delay(delayMs)
@@ -655,6 +678,7 @@ class RemoteTransport(
         heartbeatJob?.cancel()
         reverseJob?.cancel()
         offlineJob?.cancel()
+        pendingQuickMediaActionExpiry?.cancel()
         reverseClient?.close()
         authenticated.keys.forEach { it.close(1001, "service stopping") }
         try { server.stop(1_000) } catch (_: Exception) { }
@@ -677,6 +701,7 @@ class RemoteTransport(
         const val MaxArtworkBytes = 512 * 1024
         const val MaxDesktopPreviewBytes = 1_048_576
         const val PowerActionConfirmationWindowMs = 10_000L
+        const val QuickTileReconnectWindowMs = 12_000L
         val ImmediateOfflineActions = setOf("shutdown", "restart")
         val SystemActions = setOf("lock", "sleep", "restart", "shutdown")
     }

@@ -1,8 +1,11 @@
 package com.bentley.remote
 
 import android.Manifest
+import android.app.StatusBarManager
+import android.content.ComponentName
 import android.content.Intent
 import android.content.Context
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -91,6 +94,7 @@ import com.bentley.remote.data.RemoteRepository
 import com.bentley.remote.media.TimelinePredictor
 import com.bentley.remote.model.AppUiState
 import com.bentley.remote.service.BentleyRemoteService
+import com.bentley.remote.service.DeskoraQuickTileService
 import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.io.File
@@ -182,6 +186,7 @@ private fun BentleyRemoteScreen() {
                     state = state,
                     onOpenConnectionSettings = { showConnectionSettings = true },
                 )
+                QuickTileCard(context)
                 OutlinedButton(
                     onClick = {
                         context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
@@ -202,6 +207,38 @@ private fun BentleyRemoteScreen() {
             onDismiss = { showConnectionSettings = false },
         )
     }
+}
+
+@Composable
+private fun QuickTileCard(context: Context) {
+    Card {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(stringResource(R.string.quick_tile_title), fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.quick_tile_description))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                OutlinedButton(
+                    onClick = { requestQuickTile(context) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.add_quick_tile)) }
+            } else {
+                Text(stringResource(R.string.quick_tile_legacy_hint))
+            }
+        }
+    }
+}
+
+private fun requestQuickTile(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val statusBarManager = context.getSystemService(StatusBarManager::class.java) ?: return
+    statusBarManager.requestAddTileService(
+        ComponentName(context, DeskoraQuickTileService::class.java),
+        context.getString(R.string.quick_tile_label),
+        Icon.createWithResource(context, R.drawable.ic_deskora_quick_tile),
+        context.mainExecutor,
+    ) { }
 }
 
 @Composable
