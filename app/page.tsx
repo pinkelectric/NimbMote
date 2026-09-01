@@ -8,6 +8,7 @@ import {
   MonitorSmartphone,
   Monitor,
   Music2,
+  PanelsTopLeft,
   ShieldCheck,
   Smartphone,
   Volume2,
@@ -17,14 +18,15 @@ import {
 import { Button } from '@/components/ui/button';
 
 const windowsDownload =
-  'https://raw.githubusercontent.com/pinkelectric/Deskora/main/public/downloads/Deskora-Setup-v0.7.6.exe';
+  'https://github.com/pinkelectric/Deskora/raw/main/releases/v0.8.0/Deskora-Setup-v0.8.0.exe';
 const androidDownload =
-  'https://raw.githubusercontent.com/pinkelectric/Deskora/main/public/downloads/Deskora-v0.7.4-test.apk';
+  'https://github.com/pinkelectric/Deskora/raw/main/releases/v0.8.0/Deskora-v0.8.0-debug.apk';
 
 const features = [
   { icon: Music2, title: 'Media, where you need it', text: 'Play, pause, skip, seek and see the artwork from your Windows media session.' },
   { icon: Volume2, title: 'Windows volume on your phone', text: 'Adjust the computer volume or mute it without reaching for the keyboard.' },
   { icon: Monitor, title: 'Your desktop at a glance', text: 'See the current wallpaper, connection state and power controls in one card.' },
+  { icon: PanelsTopLeft, title: 'Play/Pause in Quick Settings', text: 'Keep a one-tap Deskora control beside Wi-Fi and Bluetooth, even after Android hides the media card.' },
   { icon: ShieldCheck, title: 'Paired on your network', text: 'Deskora connects your phone and PC over the same Wi-Fi with a six-digit pairing code.' },
 ];
 
@@ -77,8 +79,8 @@ export default function Home() {
       <section className="download-section" id="downloads">
         <div><p className="eyebrow"><span /> First public test</p><h2>Try Deskora today.</h2><p>Install the agent first, then the Android test build. The Android package is not yet distributed by Google Play, so Android will ask for your approval to install it.</p></div>
         <div className="download-cards">
-          <a className="download-card" href={windowsDownload} download><span className="download-icon windows"><MonitorSmartphone /></span><span><strong>Deskora Agent</strong><small>Windows 10 / 11 · v0.7.6</small></span><Download /></a>
-          <a className="download-card" href={androidDownload} download><span className="download-icon android"><Smartphone /></span><span><strong>Deskora for Android</strong><small>Test APK · v0.7.4</small></span><Download /></a>
+          <a className="download-card" href={windowsDownload} download><span className="download-icon windows"><MonitorSmartphone /></span><span><strong>Deskora Agent</strong><small>Windows 10 / 11 · v0.8.0</small></span><Download /></a>
+          <a className="download-card" href={androidDownload} download><span className="download-icon android"><Smartphone /></span><span><strong>Deskora for Android</strong><small>Test APK · v0.8.0</small></span><Download /></a>
         </div>
       </section>
 
