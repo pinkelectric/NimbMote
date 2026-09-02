@@ -36,7 +36,7 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
         _trayIcon = new NotifyIcon
         {
             Icon = _applicationIcon,
-            Text = "Deskora",
+            Text = "NimbMote",
             ContextMenuStrip = menu,
             Visible = true
         };
@@ -72,7 +72,7 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
         {
             var answer = MessageBox.Show(
                 "This removes the existing pairing before accepting a new code. Continue?",
-                "Deskora",
+                "NimbMote",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
             if (answer != DialogResult.Yes) return;
@@ -96,9 +96,9 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
         var version = assembly?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
             ?? assembly?.GetName().Version?.ToString() ?? "unknown";
         MessageBox.Show(
-            $"Deskora Agent\nVersion: {version}\nExecutable: {Environment.ProcessPath}\n\n" +
+            $"NimbMote Agent\nVersion: {version}\nExecutable: {Environment.ProcessPath}\n\n" +
             $"Installed path: {AgentInstallLayout.ExecutablePath(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles))}",
-            "Deskora diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            "NimbMote diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     private async void ExitClicked(object? sender, EventArgs e)

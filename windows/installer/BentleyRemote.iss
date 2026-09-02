@@ -1,4 +1,4 @@
-; Deskora — native interactive installer, compiled by Inno Setup 6.
+; NimbMote — native interactive installer, compiled by Inno Setup 6.
 ; Build defines required: SourceDir, OutputDir, ProductVersion.
 
 #ifndef SourceDir
@@ -11,7 +11,7 @@
   #error ProductVersion build define is required
 #endif
 
-#define AppName "Deskora"
+#define AppName "NimbMote"
 #define AppExeName "BentleyRemote.Agent.exe"
 #define AppId "{{B6BFE4C7-B8E5-4F77-96AB-50D0511F4295}"
 
@@ -19,22 +19,22 @@
 AppId={#AppId}
 AppName={#AppName}
 AppVersion={#ProductVersion}
-AppPublisher=Deskora
+AppPublisher=NimbMote
 DefaultDirName={autopf}\Deskora
-DefaultGroupName=Deskora
+DefaultGroupName=NimbMote
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
-OutputBaseFilename=Deskora-Setup-v{#ProductVersion}
+OutputBaseFilename=NimbMote-Setup-v{#ProductVersion}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 SetupIconFile={#SourceDir}\Deskora.ico
 CloseApplications=yes
 RestartApplications=no
-UninstallDisplayName=Deskora Agent
+UninstallDisplayName=NimbMote Agent
 UninstallDisplayIcon={app}\Deskora.ico
 
 [Files]
@@ -46,13 +46,13 @@ Name: "desktopicon"; Description: "Создать ярлык на рабочем
 [Icons]
 ; Use the explicit common Start-menu folder. {group} depends on shell/group-page
 ; resolution and was not discoverable after a clean v0.2.5 installation.
-Name: "{commonprograms}\Deskora\Deskora Agent"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\Deskora.ico"
-Name: "{autodesktop}\Deskora"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\Deskora.ico"; Tasks: desktopicon
+Name: "{commonprograms}\NimbMote\NimbMote Agent"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\Deskora.ico"
+Name: "{autodesktop}\NimbMote"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\Deskora.ico"; Tasks: desktopicon
 
 [Registry]
 ; Per-machine startup launches the installed agent for the signed-in user. It
 ; avoids an elevated installer writing a Run value into the wrong HKCU hive.
-Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Deskora"; ValueData: """{app}\{#AppExeName}"""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "NimbMote"; ValueData: """{app}\{#AppExeName}"""; Flags: uninsdeletevalue
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Parameters: "--show-pairing"; Flags: nowait skipifsilent; Check: IsFirstDeskoraInstall
@@ -84,7 +84,7 @@ begin
   RemoveUserData := False;
   if not UninstallSilent then
     RemoveUserData := MsgBox(
-      'Удалить также сохранённое сопряжение и все данные Deskora?' + #13#10 + #13#10 +
+      'Удалить также сохранённое сопряжение и все данные NimbMote?' + #13#10 + #13#10 +
       'Да — полное удаление: следующая установка будет как первая.' + #13#10 +
       'Нет — удалить только программу и оставить данные для будущей установки.',
       mbConfirmation, MB_YESNO) = IDYES;
@@ -102,12 +102,14 @@ var
   ResultCode: Integer;
 begin
   if CurStep = ssInstall then begin
-    { Stop only the known Deskora agent before replacing its own files. }
+    { Stop only the known NimbMote agent before replacing its own files. }
     Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM BentleyRemote.Agent.exe', '', SW_HIDE,
       ewWaitUntilTerminated, ResultCode);
   end;
   if CurStep = ssPostInstall then begin
-    { Replace only the two known legacy shortcuts with their Deskora equivalents. }
+    { Replace only the known legacy shortcuts with their NimbMote equivalents. }
+    DeleteFile(ExpandConstant('{commonprograms}\Deskora\Deskora Agent.lnk'));
+    DeleteFile(ExpandConstant('{autodesktop}\Deskora.lnk'));
     DeleteFile(ExpandConstant('{commonprograms}\Bentley Remote\Bentley Remote Agent.lnk'));
     DeleteFile(ExpandConstant('{autodesktop}\Bentley Remote.lnk'));
     { v0.1.1/v0.2.3 used per-user Run values. Remove only these known names;
@@ -120,5 +122,7 @@ begin
       'Bentley Remote');
     RegDeleteValue(HKLM, 'Software\Microsoft\Windows\CurrentVersion\Run',
       'BentleyRemote.Agent');
+    RegDeleteValue(HKLM, 'Software\Microsoft\Windows\CurrentVersion\Run',
+      'Deskora');
   end;
 end;

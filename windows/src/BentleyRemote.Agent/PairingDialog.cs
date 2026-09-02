@@ -6,7 +6,7 @@ internal sealed class PairingDialog : Form
 
     public PairingDialog(string code, Func<bool> isPaired)
     {
-        Text = "Pair Deskora";
+        Text = "Pair NimbMote";
         AutoScaleMode = AutoScaleMode.Dpi;
         ClientSize = new Size(480, 252);
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -17,7 +17,7 @@ internal sealed class PairingDialog : Form
         var explanation = new Label
         {
             AutoSize = false,
-            Text = "Open Deskora on Android, enter this code and tap Search. The code expires after 10 minutes.",
+            Text = "Open NimbMote on Android, enter this code and tap Search. The code expires after 10 minutes.",
             Padding = new Padding(0, 0, 0, 8),
             Dock = DockStyle.Fill,
         };

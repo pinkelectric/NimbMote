@@ -21,8 +21,8 @@ $workRoot = Join-Path $workspaceRoot 'work'
 $downloadsRoot = Join-Path $workRoot 'downloads'
 $toolchainsRoot = Join-Path $workRoot 'toolchains'
 $gradleUserHome = Join-Path $workRoot 'gradle-user-home'
-$packageRoot = Join-Path $outputsRoot "Deskora-$versionTag-binaries"
-$packageZip = Join-Path $outputsRoot "Deskora-$versionTag-binaries.zip"
+$packageRoot = Join-Path $outputsRoot "NimbMote-$versionTag-binaries"
+$packageZip = Join-Path $outputsRoot "NimbMote-$versionTag-binaries.zip"
 
 $dotnetRoot = Join-Path $toolchainsRoot 'dotnet'
 $jdkExtractRoot = Join-Path $toolchainsRoot 'jdk-17'
@@ -197,7 +197,7 @@ if (-not (Test-Path -LiteralPath $agentExe)) { throw "Windows agent was not foun
 Write-Step 'Packaging binaries and checksums'
 $androidPackage = Join-Path $packageRoot 'android'
 New-Item -ItemType Directory -Force -Path $androidPackage | Out-Null
-$versionedApkName = "Deskora-$versionTag-debug.apk"
+$versionedApkName = "NimbMote-$versionTag-debug.apk"
 Copy-Item -LiteralPath $apkPath -Destination (Join-Path $androidPackage $versionedApkName) -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'README.md') -Destination $packageRoot -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'TESTING.md') -Destination $packageRoot -Force
@@ -208,7 +208,7 @@ $ErrorActionPreference = 'Continue'
 $javaVersion = ((& $javaExe.FullName -version 2>&1 | Select-Object -First 1).ToString())
 $ErrorActionPreference = $savedErrorActionPreference
 $report = @"
-# Deskora binary build report
+# NimbMote binary build report
 
 - Version: $versionTag
 - Built: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')

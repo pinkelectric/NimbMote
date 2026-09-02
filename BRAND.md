@@ -1,6 +1,6 @@
-# Deskora brand direction
+# NimbMote brand direction
 
-Deskora is the public product name. It is short, neutral and describes a bridge
+NimbMote is the public product name. It is short, neutral and describes a bridge
 between a desktop and the devices around it without borrowing another brand's
 identity.
 
