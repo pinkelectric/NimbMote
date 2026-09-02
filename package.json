@@ -9,7 +9,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
-    "deploy": "wrangler deploy --config wrangler.json",
+    "deploy": "wrangler deploy --config dist/server/wrangler.json --name nimbmote",
     "lint": "oxlint",
     "format": "oxfmt"
   },
