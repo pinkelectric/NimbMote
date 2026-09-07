@@ -1,12 +1,16 @@
-# Build status — v0.7.8 — Android update-card fix — 2026-09-01
+# Build status — NimbMote v0.9.0 — public rebrand — 2026-09-01
 
-- Android debug APK built as `0.7.8` / `7009`; Android unit tests passed,
-  including the revised test-package version-label case.
-- Its APK Signature Scheme v2 signature was verified with the established
-  Android debug certificate SHA-256
-  `34CB31A3FB393E034948EBA1BA007215EA8025A4759FC8BF4DFF2E3CBD2C7629`.
-- Windows-agent behaviour is unchanged, but tests, self-contained `win-x64`
-  publish and native Inno Setup packaging also passed for the matching v0.7.8
-  installer.
-- APK SHA-256: `6A6416023C1B3972BEEDB246B1567B7D98A239EEA1541E5B8D9A224111A70252`.
-- Setup SHA-256: `0CC9969C68AB6A71E548DB885EA2DD081E47CB3CF75963520C5EBCC9A575F18A`.
+- Android debug APK built as versionName `0.9.0` / versionCode `9001`.
+- Android unit tests and protocol fixture validation passed.
+- APK Signature Scheme v2 signature was verified.
+- Windows x64 self-contained agent published successfully.
+- Inno Setup 6.7.3 compiled the Windows installer successfully.
+
+## Release artifacts
+
+- `NimbMote-v0.9.0-debug.apk`
+  `E342C5FD6650534AAAB7BAD7BA392AEACC920402F51F12FCAC2146E082C92A2E`
+- `NimbMote-Setup-v0.9.0.exe`
+  `4189A5075F578A4B9DA73DDEFFDB5FAA405C335C4A7C5674589FBEF4AE9123A5`
+
+The public name has changed to NimbMote. Compatibility identifiers and the Android package ID remain unchanged in this release so existing users can update without re-pairing.

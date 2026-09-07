@@ -1,259 +1,76 @@
-# Deskora
+# NimbMote
 
-Локальная связка Android + Windows 11 для управления системной медиасессией и
-общей громкостью Windows с Samsung Galaxy A56. Облака, аккаунтов, аналитики,
-relay-серверов и браузерного расширения нет.
+**A private Android remote for Windows media, volume, and power controls on your local Wi-Fi.**
 
-MVP реализует:
+NimbMote pairs one Android phone with one Windows computer. Once paired, the phone can control the active Windows media session, adjust Windows volume, show the current Windows wallpaper, and send sleep, lock, shutdown, or restart commands. It does not require an account, a cloud relay, analytics, or a browser extension.
 
-- автоматическое подключение Windows к IP текущего Wi-Fi default gateway — в
-  основном сценарии это Galaxy, раздающий hotspot;
-- WebSocket `ws://<gateway>:45892/bentley`, heartbeat и переподключение с
-  ограниченным exponential backoff;
-- резервное подключение Android → Windows на TCP `45893`;
-- Windows GSMTC (`Windows.Media.Control`) для Edge/YouTube и других приложений;
-- Windows Core Audio (NAudio): master volume и mute;
-- Android Media3 `MediaSessionService` и настоящий remote `Player`, который не
-  воспроизводит звук на телефоне;
-- системную медиакарточку с title, artist, состоянием, timeline и artwork;
-- play, pause, previous, next, ±10 секунд, seek, volume и mute;
-- одноразовый шестизначный код, Android Keystore, Windows DPAPI и HMAC-SHA256
-  для всех последующих соединений;
-- tray-агент без постоянно открытого окна и опциональный автозапуск.
-- карточку подключённого ПК: одноразовый защищённый preview текущего primary
-  desktop при открытии приложения или по кнопке Refresh; это не видеострим и
-  не удалённый рабочий стол.
+> **Public test release.** NimbMote is currently distributed as a Windows setup file and an Android test APK. The Android package is not yet in Google Play, so Android will ask for approval before installing it.
 
-## Структура
+## What it does
+
+- Play, pause, skip, seek, and view artwork from the active Windows media session.
+- Adjust or mute the Windows master volume from Android.
+- Keep a one-tap Play/Pause control in Android Quick Settings.
+- Show the selected Windows wallpaper and connection state in the phone app.
+- Send explicit sleep, lock, shutdown, and restart commands.
+- Pair with a one-time six-digit code while both devices are on the same Wi-Fi.
+
+The phone mirrors the Windows media session; it does not stream or play a second audio feed.
+
+## Get the current test release
+
+The current version is **v0.9.0**.
+
+1. Download and install [NimbMote Agent for Windows](releases/v0.9.0/NimbMote-Setup-v0.9.0.exe).
+2. Download [NimbMote for Android](releases/v0.9.0/NimbMote-v0.9.0-debug.apk) and open the APK on your phone.
+3. Open NimbMote Agent. On a first installation it displays a six-digit pairing code.
+4. Open NimbMote on Android, enter the code, and tap **Search and pair on this LAN**.
+
+The Windows installer normally preserves a pairing when updating. During uninstall it offers a choice: remove the application only, or also remove saved pairing data for a completely fresh installation.
+
+## Requirements
+
+- Windows 10 or Windows 11, x64.
+- Android 8.0 or newer.
+- Both devices connected to the same local Wi-Fi or a phone hotspot.
+
+For reliable background media controls on Samsung / One UI, set NimbMote's battery use to **Unrestricted** and do not add it to Deep sleeping apps.
+
+## Privacy and local-network design
+
+NimbMote has no user account and no product cloud service. Pairing secrets stay in Android Keystore on the phone and Windows DPAPI on the PC. Subsequent local connections are authenticated with HMAC and a timestamp/nonce; the wallpaper preview is separately encrypted with AES-256-GCM.
+
+The current local transport is authenticated but not a general encrypted tunnel: media metadata and commands can be visible to someone who controls the same local network. Pair only on a network you trust.
+
+## Repository layout
 
 ```text
-android/                 Kotlin + Compose + Media3 APK
-windows/                 .NET 8 WinForms tray agent
-protocol/                описание, JSON Schema и примеры protocol v1
-docs/ARCHITECTURE.md      архитектура и сетевые решения
-scripts/                  проверка протокола и настройка fallback
-releases/                 устанавливаемые тестовые сборки по SemVer
-TESTING.md                чек-лист Galaxy A56 / One UI 8.5
+android/    Kotlin, Jetpack Compose, Media3 Android client
+windows/    .NET 8 WinForms Windows tray agent and installer
+protocol/   Protocol description, schema, and fixtures
+releases/   Versioned installable test builds and changelogs
+docs/       Architecture and release documentation
 ```
 
-## Версионирование и releases
+## Build from source
 
-Текущая версия хранится в корневом файле `VERSION` и автоматически применяется
-к Android и Windows. Стабильные тестовые сборки помечаются аннотированными Git
-tag вида `v0.1.0`, `v0.1.1`, `v0.2.0`.
-
-Каждая реально устанавливаемая версия находится в `releases/vX.Y.Z/` и содержит
-только versioned APK, Windows Setup EXE и краткий `CHANGELOG.md`. Копии
-исходников туда не кладутся: их история хранится в Git.
-Полный порядок выпуска описан в [docs/VERSIONING.md](docs/VERSIONING.md), а
-обязательные правила для дальнейшей работы — в [AGENTS.md](AGENTS.md).
-
-## Автоматическая portable-сборка
-
-Из обычного PowerShell в корне репозитория выполните:
+The source tree contains portable build tooling for local development. The authoritative product version is the root [`VERSION`](VERSION) file; Android and Windows derive their release version from it.
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
-  .\scripts\bootstrap-portable-and-package.ps1
-```
-
-Скрипт не устанавливает SDK в систему: .NET 8, Microsoft OpenJDK 17 и Android
-SDK сохраняются в соседний каталог `work`. Результат — debug APK,
-самодостаточная папка Windows x64, versioned ZIP и SHA-256 — появляется в
-соседнем каталоге `outputs`.
-
-## Требования
-
-Windows-сборка:
-
-- Windows 11 x64;
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0);
-- интернет только для первого `dotnet restore` (пакеты NAudio и ProtectedData).
-
-Android-сборка:
-
-- Android Studio с JDK 17 или отдельный JDK 17;
-- Android SDK Platform 35 и Build Tools;
-- интернет для первой загрузки Gradle и Maven-зависимостей.
-
-После сборки и сопряжения интернет для управления не нужен. Мобильные данные
-могут быть выключены, пока локальная hotspot-связь телефон ↔ ПК остаётся жива.
-
-## Установка и обновление Windows-агента
-
-Откройте `BentleyRemote-Setup-vX.Y.Z.exe` из текущего релиза двойным щелчком,
-подтвердите стандартный запрос Windows UAC и нажмите **Install** (или
-**Update**). Установщик сам останавливает только Bentley Remote Agent,
-устанавливает актуальную версию в `C:\Program Files\Bentley Remote\`, заменяет
-единственную известную запись автозапуска Bentley Remote и запускает обновлённый
-агент. Автозапуск хранится как одна запись Bentley Remote в HKLM и действует для
-всех пользователей этого компьютера. Повторный запуск Setup EXE новой версии —
-обычный способ обновления.
-
-На странице установки можно выбрать другой каталог; при обновлении сохраняется
-ранее выбранный. Установщик всегда создаёт ярлык в меню Пуск и предлагает
-включённый по умолчанию ярлык на рабочем столе.
-
-Pairing/config остаётся в `%LOCALAPPDATA%\BentleyRemote` и поэтому сохраняется
-при обновлении. В tray выберите **About / diagnostics…**, чтобы увидеть версию и
-фактический путь запущенного EXE; он должен указывать на Program Files.
-
-## Сборка и portable-запуск Windows-агента
-
-Из PowerShell в корне репозитория:
-
-```powershell
-dotnet restore .\windows\BentleyRemote.sln
+# Windows agent
 dotnet build .\windows\BentleyRemote.sln -c Release
-dotnet run --project .\windows\src\BentleyRemote.Agent\BentleyRemote.Agent.csproj -c Release
-```
 
-Публикация самостоятельной папки (на ПК всё равно должен быть .NET 8 Desktop
-Runtime, но SDK уже не нужен):
-
-```powershell
-dotnet publish .\windows\src\BentleyRemote.Agent\BentleyRemote.Agent.csproj `
-  -c Release -r win-x64 --self-contained false `
-  -o .\artifacts\windows-x64
-```
-
-Portable build предназначен только для разработки и диагностики, но не является
-способом пользовательского обновления. Иконка появится в system tray. В меню
-доступны статус, pairing, About/diagnostics, список найденных gateway,
-автозапуск и выход. Автозапуск указывает только на установленный EXE в Program
-Files.
-
-## Сборка APK
-
-`android\gradlew.bat` — небольшой bootstrap: при первом запуске он загружает
-официальный Gradle 8.11.1 в локальную `android\.gradle-dist`, затем запускает
-обычную сборку.
-
-```powershell
+# Android test APK
 cd .\android
 .\gradlew.bat :app:assembleDebug
 ```
 
-APK: `android\app\build\outputs\apk\debug\app-debug.apk`.
+See [AGENTS.md](AGENTS.md) for repository and release rules, and [TESTING.md](TESTING.md) for hardware checks.
 
-Для release APK создайте signing config/keystore в Android Studio. Для личной
-ручной установки debug APK достаточно; он не предназначен для Google Play.
+## Current public identity and compatibility
 
-## Установка на Galaxy A56
+The public product is **NimbMote**. Some implementation identifiers still use the former `BentleyRemote` / `Deskora` names so that v0.9.0 can update existing installations without forcing people to reinstall or pair devices again. Those identifiers are intentionally being changed only in a dedicated compatibility release before Google Play distribution.
 
-Через ADB:
+## License
 
-```powershell
-adb install -r .\android\app\build\outputs\apk\debug\app-debug.apk
-```
-
-Или скопируйте APK на телефон, откройте его в «Мои файлы» и разово разрешите
-этому источнику «Установка неизвестных приложений».
-
-При первом запуске:
-
-1. Разрешите уведомления — без них системная медиакарточка/foreground-индикация
-   могут быть скрыты.
-2. Откройте показанную приложением страницу battery optimization. В One UI
-   найдите Bentley Remote в **Настройки → Приложения → Bentley Remote →
-   Батарея** и выберите **Без ограничений / Unrestricted**.
-3. Проверьте, что Bentley Remote не добавлен в **Обслуживание устройства →
-   Батарея → Ограничения фонового использования → Приложения в глубоком сне**.
-   Названия пунктов могут немного отличаться в конкретной сборке One UI 8.5.
-4. Не блокируйте уведомление медиасессии.
-
-Приложение не запрашивает доступ к контактам, файлам, геопозиции или интернету
-за пределами локального WebSocket. Разрешение `INTERNET` в Android также нужно
-для обычных локальных сокетов.
-
-## Первое сопряжение в основном hotspot-сценарии
-
-1. На Galaxy включите мобильную точку доступа WPA2/WPA3.
-2. Подключите Windows-компьютер к Wi-Fi этой точки доступа.
-3. Запустите Bentley Remote на телефоне. На карточке Secure pairing появится
-   код из 6 цифр, действующий 10 минут.
-4. Запустите Windows-агент. Он сам переберёт IPv4 default gateway активных
-   интерфейсов, отдавая приоритет Wi-Fi; IP не хардкодится.
-5. В tray выберите **Pair with phone…** и введите код телефона.
-6. Дождитесь `Connected` на телефоне и в tray. Секрет останется в Android
-   Keystore, а на Windows — в защищённом DPAPI-файле текущего пользователя.
-
-Первичное сообщение передаёт секрет по локальному `ws://`, поэтому выполняйте
-pairing только на своей защищённой hotspot-сети без посторонних клиентов.
-Последующие соединения используют HMAC с timestamp и одноразовым nonce.
-
-Диагностика gateway/порта на Windows:
-
-```powershell
-Get-NetIPConfiguration | Where-Object IPv4DefaultGateway
-$gateway = (Get-NetIPConfiguration | Where-Object IPv4DefaultGateway | Select-Object -First 1).IPv4DefaultGateway.NextHop
-Test-NetConnection $gateway -Port 45892
-```
-
-`TcpTestSucceeded: True` означает, что One UI пропускает входящее соединение к
-Android-приложению на hotspot-интерфейсе.
-
-## Проверка Edge / YouTube
-
-1. Откройте обычное (не InPrivate) окно Microsoft Edge и запустите YouTube.
-2. Убедитесь, что аппаратная кнопка Play/Pause на клавиатуре управляет роликом —
-   это простой признак опубликованной системной медиасессии.
-3. Bentley Remote должен получить title/status/timeline; Android Media3 создаст
-   системную карточку. Play/Pause и громкость должны менять состояние Windows.
-
-Некоторые ролики/реклама/страницы YouTube не публикуют previous, next, seek или
-thumbnail. Агент передаёт capability-флаги Windows и отключает неподдерживаемые
-кнопки; расширение Edge намеренно не входит в MVP.
-
-## Резервный режим Android → Windows
-
-Fallback нужен только если `Test-NetConnection <gateway> -Port 45892` стабильно
-не проходит. Сначала проведите обычное сопряжение хотя бы один раз — fallback
-не передаёт новый pairing-secret.
-
-1. От имени администратора выполните:
-
-   ```powershell
-   .\scripts\enable-windows-reverse-mode.ps1
-   ```
-
-   Скрипт создаёт URL ACL для `http://+:45893/bentley/` текущему пользователю и
-   входящее правило Windows Firewall только для профиля Private.
-
-2. Найдите IPv4 компьютера на hotspot-интерфейсе через `Get-NetIPAddress
-   -AddressFamily IPv4`.
-3. В Android включите fallback, введите этот IPv4 без `ws://` и нажмите Apply.
-
-Основной и fallback-каналы взаимозаменяемы после `auth.ok`; одновременно
-активным считается последний аутентифицированный канал.
-
-## Хранилища и сброс
-
-- Android: AES-256/GCM key в Android Keystore, шифротекст в private
-  SharedPreferences без backup.
-- Windows: `%LOCALAPPDATA%\BentleyRemote\agent-config.json`; секрет внутри
-  защищён DPAPI CurrentUser.
-- «Forget computer» на телефоне и «Re-pair» в tray удаляют соответствующую
-  сторону. Для полного сброса нажмите оба пункта и проведите pairing заново.
-
-## Известные ограничения MVP
-
-- Надёжность входящего сокета на интерфейсе Samsung hotspot, поведение Media3
-  remote volume и физические кнопки нельзя подтвердить без реального A56.
-- Media3 переводит удалённый `DeviceInfo` в Android remote volume API, но One UI
-  сама решает, когда физические клавиши направляются активной remote session.
-- Android может завершить приостановленную `MediaSessionService`; при активном
-  воспроизведении Media3 переводит её в foreground. Режим Unrestricted важен.
-- Windows выбирает `GetCurrentSession()`. Если одновременно активны несколько
-  системных медиасессий, приоритет определяет Windows.
-- MVP — одна пара телефон ↔ ПК. Для нового ПК нужно сбросить pairing.
-- `ws://` скрывает не содержимое/метаданные. HMAC аутентифицирует стороны, но не
-  шифрует локальный трафик. Для личной защищённой hotspot-сети это осознанный
-  MVP-компромисс.
-- Desktop preview отдельно шифруется AES-256-GCM ключом, выведенным из secret
-  pairing, имеет одноразовый nonce и лимит 1 MiB. Он доступен только уже
-  paired устройству; скриншоты не сохраняются и не передаются в облако.
-
-Полный аппаратный чек-лист находится в [TESTING.md](TESTING.md).
-Фактический статус проверок текущего окружения записан в
-[BUILD_STATUS.md](BUILD_STATUS.md).
+[MIT](LICENSE) © 2026 Pink Electric.

@@ -1,4 +1,4 @@
-# Bentley Remote repository rules
+# NimbMote repository rules
 
 ## Обязательный Git-процесс
 
