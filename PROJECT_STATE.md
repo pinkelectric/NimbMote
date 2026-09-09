@@ -23,10 +23,10 @@ Before a Google Play release, make one dedicated migration decision for the Andr
 
 ## Public-release cleanup in progress
 
-1. Align the public GitHub repository, README, license, website metadata, and download links under the NimbMote name.
-2. Rename the public GitHub repository from `pinkelectric/Deskora` to `pinkelectric/NimbMote`; GitHub should retain the old URL as a redirect, then update all new public links.
-3. Move the marketing/download site to a host reachable from Russia as well as internationally. Keep Cloudflare as a development or backup deployment only.
-4. Prepare English Showcase submission material: a hosted URL, public repository, short setup instructions, cover image, and an accurate statement that Codex was used to build the project.
+1. Public repository renamed to `pinkelectric/NimbMote`; all new download links use the new repository. GitHub retains the old Deskora URL as a redirect.
+2. Static hosting build is ready for the marketing/download site, including a standalone privacy page. The public-site base URL is configurable through `NIMBMOTE_PUBLIC_SITE_URL` at build time.
+3. Create the Timeweb Cloud frontend in Almaty (Kazakhstan) from `main` with `npm run build:static` and `/dist/client`, then set `NIMBMOTE_PUBLIC_SITE_URL` to its technical URL. Keep Cloudflare as a development or backup deployment only.
+4. After the Timeweb URL is live, validate the public site, metadata preview, downloads and privacy link, then prepare English Showcase submission material: hosted URL, public repository, short setup instructions, cover image, and an accurate statement that Codex was used to build the project.
 
 ## Known risks and next real-device checks
 
