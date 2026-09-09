@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="How NimbMote handles the connection between your Android phone and Windows PC." />
+    <title>NimbMote privacy</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <style>
+      :root { color-scheme: dark; --ink:#f5f2fb; --muted:#aaa4b9; --void:#0c0911; --surface:#17131d; --line:rgba(255,255,255,.12); --violet:#b694ff; --coral:#ff8470; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-width:320px; background:radial-gradient(circle at 76% 3%,rgba(107,54,184,.22),transparent 27%),var(--void); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
+      main { max-width:850px; margin:auto; padding:60px 28px 110px; }
+      a { color:inherit; text-decoration:none; }
+      .eyebrow { display:flex; align-items:center; gap:9px; margin:48px 0 20px; color:#d2bfff; font-size:12px; font-weight:700; letter-spacing:.13em; text-transform:uppercase; }
+      .eyebrow span { width:7px; height:7px; border-radius:50%; background:var(--coral); box-shadow:0 0 13px var(--coral); }
+      h1 { max-width:700px; margin:0 0 24px; font-size:clamp(44px,6vw,72px); line-height:.99; letter-spacing:-.07em; }
+      h2 { margin:20px 0 9px; font-size:20px; letter-spacing:-.04em; }
+      p,li { color:var(--muted); line-height:1.6; }
+      .lead { max-width:630px; font-size:19px; }
+      .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:54px; }
+      section { padding:27px; border:1px solid var(--line); border-radius:18px; background:rgba(23,19,29,.92); }
+      .icon { color:var(--violet); font-size:25px; line-height:1; }
+      .note { margin-top:16px; }
+      ul { margin-bottom:0; padding-left:18px; }
+      .footer { margin-top:34px; color:var(--muted); font-size:14px; }
+      .brand { display:inline-flex; align-items:center; gap:10px; color:var(--ink); font-size:18px; font-weight:750; letter-spacing:-.04em; }
+      .brand-mark { display:inline-flex; gap:4px; align-items:center; justify-content:center; width:28px; height:28px; padding:4px; border:1px solid rgba(255,255,255,.36); border-radius:8px; background:linear-gradient(145deg,rgba(191,154,255,.38),rgba(255,121,103,.18)); }
+      .brand-mark i { display:block; border:1.5px solid white; border-radius:3px; opacity:.92; }
+      .brand-mark i:first-child { width:9px; height:15px; }.brand-mark i:last-child { width:13px; height:9px; }
+      @media (max-width:780px) { main { padding:42px 22px 82px; }.grid { grid-template-columns:1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="brand" href="/"><span class="brand-mark"><i></i><i></i></span>NimbMote</a>
+      <p class="eyebrow"><span></span>Privacy</p>
+      <h1>NimbMote is designed to stay local.</h1>
+      <p class="lead">NimbMote connects your Android phone to your Windows computer over the same local network. It does not require an account.</p>
+      <div class="grid">
+        <section><div class="icon">⌁</div><h2>What moves between devices</h2><p>Media title, artist, artwork, playback state and position; Windows volume; the selected wallpaper preview; and the commands you explicitly send from the phone.</p></section>
+        <section><div class="icon">⌾</div><h2>How pairing works</h2><p>The Windows Agent displays a one-time six-digit code. Enter it in NimbMote while both devices are on the same Wi-Fi. The pairing secret protects later communication between those two devices.</p></section>
+      </div>
+      <section class="note"><h2>What NimbMote does not do</h2><ul><li>It does not create a NimbMote account.</li><li>It does not upload your desktop screenshot: the phone receives the configured Windows wallpaper preview only.</li><li>It does not send audio from the computer to the phone.</li><li>It does not collect advertising or analytics data.</li></ul></section>
+      <p class="footer">This public test page will gain a contact address and a release repository before the Google Play release.</p>
+    </main>
+  </body>
+</html>

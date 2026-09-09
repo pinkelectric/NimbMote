@@ -18,9 +18,9 @@ import {
 import { Button } from '@/components/ui/button';
 
 const windowsDownload =
-  'https://github.com/pinkelectric/Deskora/raw/main/releases/v0.9.0/NimbMote-Setup-v0.9.0.exe';
+  'https://github.com/pinkelectric/NimbMote/raw/main/releases/v0.9.0/NimbMote-Setup-v0.9.0.exe';
 const androidDownload =
-  'https://github.com/pinkelectric/Deskora/raw/main/releases/v0.9.0/NimbMote-v0.9.0-debug.apk';
+  'https://github.com/pinkelectric/NimbMote/raw/main/releases/v0.9.0/NimbMote-v0.9.0-debug.apk';
 
 const features = [
   { icon: Music2, title: 'Media, where you need it', text: 'Play, pause, skip, seek and see the artwork from your Windows media session.' },
@@ -36,7 +36,7 @@ export default function Home() {
       <nav className="site-nav">
         <a className="brand" href="#top" aria-label="NimbMote home"><span className="brand-mark" aria-hidden="true"><span /><span /></span><span>NimbMote</span></a>
         <div className="nav-links" aria-label="Page navigation"><a href="#how-it-works">How it works</a><a href="#features">Features</a><a href="#downloads">Download</a></div>
-        <a className="nav-github" href="https://github.com/pinkelectric/Deskora" target="_blank" rel="noreferrer"><GitBranch size={16} /> GitHub</a>
+        <a className="nav-github" href="https://github.com/pinkelectric/NimbMote" target="_blank" rel="noreferrer"><GitBranch size={16} /> GitHub</a>
       </nav>
 
       <section className="hero" id="top">
@@ -85,7 +85,7 @@ export default function Home() {
       </section>
 
       <section className="privacy-strip"><LockKeyhole /><p><strong>Your connection stays yours.</strong> NimbMote works between your paired phone and PC on the same local network. No account is needed.</p><a href="/privacy">Privacy details <ChevronRight /></a></section>
-      <footer id="github"><a className="brand" href="#top"><span className="brand-mark" aria-hidden="true"><span /><span /></span><span>NimbMote</span></a><p>Windows media, on your phone.</p><a href="https://github.com/pinkelectric/Deskora" target="_blank" rel="noreferrer">© 2026 NimbMote · View the public GitHub repository</a></footer>
+      <footer id="github"><a className="brand" href="#top"><span className="brand-mark" aria-hidden="true"><span /><span /></span><span>NimbMote</span></a><p>Windows media, on your phone.</p><a href="https://github.com/pinkelectric/NimbMote" target="_blank" rel="noreferrer">© 2026 NimbMote · View the public GitHub repository</a></footer>
     </main>
   );
 }
