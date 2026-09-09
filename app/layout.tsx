@@ -3,9 +3,10 @@ import { Geist } from 'next/font/google';
 import './globals.css';
 
 const geist = Geist({ variable: '--font-geist', subsets: ['latin', 'cyrillic'] });
+const publicSiteUrl = process.env.NIMBMOTE_PUBLIC_SITE_URL ?? 'https://nimbmote.pinkelectric.workers.dev';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://nimbmote.pinkelectric.workers.dev'),
+  metadataBase: new URL(publicSiteUrl),
   title: 'NimbMote — Windows media, on your phone',
   description: 'A private Android remote for Windows media, volume and power controls on your local Wi-Fi.',
   icons: {
