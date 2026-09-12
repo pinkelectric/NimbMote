@@ -1,6 +1,6 @@
-# Build status — NimbMote v0.10.0 — persistent reconnect test build — 2026-09-12
+# Build status — NimbMote v0.10.1 — media card repair — 2026-09-12
 
-- Android debug APK built as versionName `0.10.0` / versionCode `10001`.
+- Android debug APK built as versionName `0.10.1` / versionCode `10002`.
 - Android unit tests and protocol fixture validation passed.
 - APK Signature Scheme v2 signature was verified.
 - Windows x64 self-contained agent published successfully.
@@ -10,10 +10,10 @@
 
 ## Release artifacts
 
-- `NimbMote-v0.10.0-debug.apk`
-  `E701A83BAA54E07E705606099AC5376B52A0F0859CACE7865EB34AA17BC0B31B`
-- `NimbMote-Setup-v0.10.0.exe`
-  `5642633C81011D372A4F07A0B3EC9FACAD56D5E3A74951E3C9290F43D7F465ED`
+- `NimbMote-v0.10.1-debug.apk`
+  `D3808B854D05D91828BDA268DC3A5965A97F0A37789805FF2A569191E764CDF2`
+- `NimbMote-Setup-v0.10.1.exe`
+  `985471568DA62C25E6C5FC2E827150618287768B8D00A74313E37EDA219CE435`
 
 Compatibility identifiers and the Android package ID remain unchanged, so an
 existing paired installation updates without re-pairing.

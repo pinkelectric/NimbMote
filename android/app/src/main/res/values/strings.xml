@@ -2,12 +2,6 @@
     <string name="app_name">NimbMote</string>
     <string name="media_notification_channel_name">Media controls</string>
     <string name="media_notification_channel_description">Windows media playback controls</string>
-    <string name="connection_notification_channel_name">NimbMote connection</string>
-    <string name="connection_notification_channel_description">Keeps the local Windows connection ready to reconnect</string>
-    <string name="connection_notification_title">NimbMote is ready</string>
-    <string name="connection_notification_starting">Starting local connection…</string>
-    <string name="connection_notification_waiting">Waiting to reconnect to Windows</string>
-    <string name="connection_notification_connected">Connected to Windows</string>
     <string name="app_subtitle">Windows media on this phone</string>
     <string name="connected">Connected</string><string name="disconnected">Disconnected</string>
     <string name="computer">Computer</string><string name="not_connected">Not connected</string>

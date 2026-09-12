@@ -2,10 +2,10 @@
 
 ## Current release
 
-- Stable public-test release: **v0.9.0**.
+- Latest local test release: **v0.10.1**.
 - Public product name: **NimbMote**.
 - Publisher name for public materials: **Pink Electric**.
-- Android and Windows binaries are built and packaged for v0.9.0; checksums and verification notes are in `releases/v0.9.0/CHANGELOG.md` and `BUILD_STATUS.md`.
+- Android and Windows binaries are built and packaged for v0.10.1; checksums and verification notes are in `releases/v0.10.1/CHANGELOG.md` and `BUILD_STATUS.md`.
 
 ## Local build toolchains
 

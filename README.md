@@ -19,10 +19,10 @@ The phone mirrors the Windows media session; it does not stream or play a second
 
 ## Get the current test release
 
-The current version is **v0.10.0**.
+The current version is **v0.10.1**.
 
-1. Download and install [NimbMote Agent for Windows](releases/v0.10.0/NimbMote-Setup-v0.10.0.exe).
-2. Download [NimbMote for Android](releases/v0.10.0/NimbMote-v0.10.0-debug.apk) and open the APK on your phone.
+1. Download and install [NimbMote Agent for Windows](releases/v0.10.1/NimbMote-Setup-v0.10.1.exe).
+2. Download [NimbMote for Android](releases/v0.10.1/NimbMote-v0.10.1-debug.apk) and open the APK on your phone.
 3. Open NimbMote Agent. On a first installation it displays a six-digit pairing code.
 4. Open NimbMote on Android, enter the code, and tap **Search and pair on this LAN**.
 

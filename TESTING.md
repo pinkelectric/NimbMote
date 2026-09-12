@@ -1,9 +1,11 @@
 # Bentley Remote v0.3.0 - Galaxy A56 / One UI 8.5 test plan
 
-## v0.10.0 persistent reconnect and diagnostics — tomorrow's test
+## v0.10.1 media-card repair and diagnostics — tomorrow's test
 
 - [ ] Update **both** artifacts over the existing installation. The saved pairing must remain intact.
-- [ ] Open NimbMote once, then leave the app. A quiet persistent notification says that NimbMote is ready or waiting to reconnect; it is a connection status, not a local audio player.
+- [ ] Open NimbMote once, then leave the app. There must be no standalone
+  **NimbMote is ready** / connection-status notification. When Windows has an
+  active media session, the only NimbMote entry in the shade is its media card.
 - [ ] Leave Windows media paused for 10 minutes, without reopening the Android app. Start Windows media again, or exit and reopen the Windows agent: NimbMote should reconnect and restore its media/volume state without manually opening the phone app.
 - [ ] With the agent unavailable, the Quick Settings tile shows **NimbMote reconnect**. One tap must only wake/reconnect the phone service — it must not send a delayed Play/Pause that changes Windows media after reconnecting.
 - [ ] Once connected, the same tile reads **NimbMote Play/Pause** and a single tap controls Windows media normally.
