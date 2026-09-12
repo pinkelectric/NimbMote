@@ -56,6 +56,7 @@ class RemoteTransport(
     private val onVolume: (RemoteVolumeState) -> Unit,
     private val onAuthenticated: () -> Unit = {},
     private val onConfirmedOffline: (String) -> Unit = {},
+    private val onDiagnostic: (String) -> Unit = {},
 ) : RemoteCommands {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val authenticated = ConcurrentHashMap<WebSocket, Boolean>()
@@ -73,8 +74,6 @@ class RemoteTransport(
     private var offlineJob: Job? = null
     private var pendingPowerAction: String? = null
     private var pendingPowerActionExpiry: Job? = null
-    private var pendingQuickMediaAction: String? = null
-    private var pendingQuickMediaActionExpiry: Job? = null
     private val discovery = DiscoveryListener(secretStore, scope)
     private var pairingCode = "------"
     private var pairingExpiresAt = 0L
@@ -84,21 +83,25 @@ class RemoteTransport(
 
     private val server = object : WebSocketServer(InetSocketAddress("0.0.0.0", AndroidPort)) {
         override fun onOpen(connection: WebSocket, handshake: ClientHandshake) {
+            diagnostic("Windows socket opened; authenticating")
             RemoteRepository.connection(false, "Windows found; authenticating…")
         }
 
         override fun onClose(connection: WebSocket, code: Int, reason: String, remote: Boolean) {
+            diagnostic("Windows socket closed (code=$code); reconnect kept alive")
             markSocketDisconnected(connection, "Disconnected; Windows will reconnect", confirmed = false)
         }
 
         override fun onMessage(connection: WebSocket, message: String) = handleMessage(connection, message, false)
 
         override fun onError(connection: WebSocket?, exception: Exception) {
+            diagnostic("Android WebSocket error: ${exception.javaClass.simpleName}")
             RemoteRepository.connection(false, "Android WebSocket: ${exception.message}", exception.message)
             connection?.let { markSocketDisconnected(it, "Windows connection failed; retrying", confirmed = false) }
         }
 
         override fun onStart() {
+            diagnostic("LAN listener started on port $AndroidPort")
             RemoteRepository.connection(false, "Listening for Windows on port $AndroidPort")
         }
     }
@@ -109,10 +112,12 @@ class RemoteTransport(
         this.reverseHost = reverseHost
         refreshPairingCode()
         if (started) {
+            diagnostic("reconnect service start requested; already active")
             discovery.start()
             return
         }
         started = true
+        diagnostic("reconnect service starting")
         server.isReuseAddr = true
         server.start()
         discovery.start()
@@ -205,15 +210,17 @@ class RemoteTransport(
         sendMedia(action, positionMs, offsetMs)
     }
 
-    /** A quick-settings tap may wake Android before Windows reconnects; keep one toggle briefly. */
+    /**
+     * The first Quick Settings tap after an idle period must only re-establish the link.
+     * Sending a delayed toggle here would unexpectedly pause Windows media as soon as it reconnects.
+     */
     fun toggleMediaWhenConnected() {
-        if (sendMedia("toggle")) return
-        pendingQuickMediaActionExpiry?.cancel()
-        pendingQuickMediaAction = "toggle"
-        RemoteRepository.connection(false, "Connecting to Windows…")
-        pendingQuickMediaActionExpiry = scope.launch {
-            delay(QuickTileReconnectWindowMs)
-            if (pendingQuickMediaAction == "toggle") pendingQuickMediaAction = null
+        if (sendMedia("toggle")) {
+            diagnostic("quick tile: media toggle sent")
+        } else {
+            diagnostic("quick tile: reconnect requested; media command withheld")
+            RemoteRepository.connection(false, "Reconnecting to Windows…")
+            discovery.start()
         }
     }
 
@@ -367,12 +374,8 @@ class RemoteTransport(
         offlineJob?.cancel()
         lastSeenAt = System.currentTimeMillis()
         RemoteRepository.connection(true, label)
+        diagnostic("authenticated: ${if (label.contains("fallback")) "fallback connection" else "LAN connection"}")
         onAuthenticated()
-        pendingQuickMediaAction?.let { action ->
-            pendingQuickMediaAction = null
-            pendingQuickMediaActionExpiry?.cancel()
-            sendMedia(action)
-        }
     }
 
     /**
@@ -389,18 +392,19 @@ class RemoteTransport(
             } else false
         }
         if (!wasActive) return
+        diagnostic("connection marked offline; confirmed=$confirmed")
         RemoteRepository.connection(false, label)
         scheduleOfflineRelease(label, RemoteOfflinePolicy.releaseDelayMs(confirmed))
     }
 
     private fun scheduleOfflineRelease(label: String, delayMs: Long) {
         offlineJob?.cancel()
-        pendingQuickMediaActionExpiry?.cancel()
         pendingPowerActionExpiry?.cancel()
         offlineJob = scope.launch {
             if (delayMs > 0) delay(delayMs)
             if (activeSocket == null) {
                 RemoteRepository.remoteUnavailable(label)
+                diagnostic("offline grace period completed; media session released")
                 onConfirmedOffline(label)
             }
         }
@@ -601,6 +605,7 @@ class RemoteTransport(
             }
             val client = object : WebSocketClient(uri) {
                 override fun onOpen(handshakeData: ServerHandshake) {
+                    diagnostic("fallback socket opened; authenticating")
                     reverseClient = this
                     sendAuthHello(this)
                 }
@@ -608,11 +613,13 @@ class RemoteTransport(
                 override fun onMessage(message: String) = handleMessage(this, message, true)
 
                 override fun onClose(code: Int, reason: String, remote: Boolean) {
+                    diagnostic("fallback socket closed (code=$code); reconnect kept alive")
                     markSocketDisconnected(this, "Fallback disconnected; Windows will reconnect", confirmed = false)
                     if (reverseClient === this) reverseClient = null
                 }
 
                 override fun onError(exception: Exception) {
+                    diagnostic("fallback socket error: ${exception.javaClass.simpleName}")
                     RemoteRepository.connection(false, "Fallback unavailable: ${exception.message}")
                 }
             }
@@ -662,6 +669,7 @@ class RemoteTransport(
             if (System.currentTimeMillis() - lastSeenAt > 35_000) {
                 // A hard PC shutdown may not produce TCP FIN/RST.  This is the positive
                 // liveness signal: no authenticated message for the full heartbeat window.
+                diagnostic("heartbeat timed out; waiting for Windows reconnect")
                 markSocketDisconnected(socket, "Windows unavailable (heartbeat timeout)", confirmed = true)
                 socket.close(1001, "heartbeat timeout")
             } else {
@@ -673,12 +681,12 @@ class RemoteTransport(
     }
 
     fun stop() {
+        diagnostic("reconnect service stopping")
         started = false
         discovery.stop()
         heartbeatJob?.cancel()
         reverseJob?.cancel()
         offlineJob?.cancel()
-        pendingQuickMediaActionExpiry?.cancel()
         reverseClient?.close()
         authenticated.keys.forEach { it.close(1001, "service stopping") }
         try { server.stop(1_000) } catch (_: Exception) { }
@@ -691,6 +699,8 @@ class RemoteTransport(
         doFinal(body)
     }
 
+    private fun diagnostic(message: String) = onDiagnostic(message)
+
     private companion object {
         const val AndroidPort = 45892
         const val ReversePort = 45893
@@ -701,7 +711,6 @@ class RemoteTransport(
         const val MaxArtworkBytes = 512 * 1024
         const val MaxDesktopPreviewBytes = 1_048_576
         const val PowerActionConfirmationWindowMs = 10_000L
-        const val QuickTileReconnectWindowMs = 12_000L
         val ImmediateOfflineActions = setOf("shutdown", "restart")
         val SystemActions = setOf("lock", "sleep", "restart", "shutdown")
     }

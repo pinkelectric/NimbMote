@@ -3,12 +3,15 @@ package com.bentley.remote.service
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.pm.ServiceInfo
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.core.app.NotificationCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
@@ -16,6 +19,7 @@ import androidx.media3.session.MediaSessionService
 import com.bentley.remote.MainActivity
 import com.bentley.remote.R
 import com.bentley.remote.data.RemoteRepository
+import com.bentley.remote.diagnostics.ConnectionDiagnostics
 import com.bentley.remote.media.RemoteMediaNotificationPolicy
 import com.bentley.remote.media.RemotePlayer
 import com.bentley.remote.network.RemoteTransport
@@ -33,6 +37,8 @@ class BentleyRemoteService : MediaSessionService() {
         super.onCreate()
         RemoteRepository.initialize(this)
         configureMediaNotification()
+        ConnectionDiagnostics.record(this, "service", "created; preserving local reconnect service")
+        ensureConnectionForeground(getString(R.string.connection_notification_starting))
         activateRemoteControls("service-started")
         transport = RemoteTransport(
             secretStore = SecretStore(this),
@@ -45,8 +51,21 @@ class BentleyRemoteService : MediaSessionService() {
                 RemoteRepository.volumeState(it)
                 diagnosticsHandler.post { player?.updateVolume(it) }
             },
-            onAuthenticated = { diagnosticsHandler.post { activateRemoteControls("authenticated") } },
-            onConfirmedOffline = { reason -> diagnosticsHandler.post { deactivateRemoteControls(reason) } },
+            onAuthenticated = {
+                diagnosticsHandler.post {
+                    ConnectionDiagnostics.record(this, "service", "authenticated to Windows")
+                    activateRemoteControls("authenticated")
+                    ensureConnectionForeground(getString(R.string.connection_notification_connected))
+                }
+            },
+            onConfirmedOffline = { reason ->
+                diagnosticsHandler.post {
+                    ConnectionDiagnostics.record(this, "service", "Windows offline: $reason")
+                    deactivateRemoteControls(reason)
+                    ensureConnectionForeground(getString(R.string.connection_notification_waiting))
+                }
+            },
+            onDiagnostic = { message -> ConnectionDiagnostics.record(this, "transport", message) },
         )
 
         RemoteRepository.bind(transport)
@@ -58,6 +77,7 @@ class BentleyRemoteService : MediaSessionService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        ensureConnectionForeground(getString(R.string.connection_notification_waiting))
         if (::transport.isInitialized) {
             val settings = RemoteRepository.state.value
             transport.start(settings.reverseEnabled, settings.reverseHost)
@@ -93,10 +113,12 @@ class BentleyRemoteService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         // Keep the remote session and reconnect loop alive after the Activity is dismissed.
+        ConnectionDiagnostics.record(this, "service", "activity task removed; reconnect service retained")
     }
 
     override fun onDestroy() {
-        transport.stop()
+        ConnectionDiagnostics.record(this, "service", "destroyed by Android")
+        if (::transport.isInitialized) transport.stop()
         mediaSession?.release()
         mediaSession = null
         player?.release()
@@ -131,7 +153,6 @@ class BentleyRemoteService : MediaSessionService() {
         player?.release()
         player = null
         getSystemService(NotificationManager::class.java).cancel(MEDIA_NOTIFICATION_ID)
-        stopForeground(STOP_FOREGROUND_REMOVE)
         Log.i(TAG, "Remote controls released after confirmed offline: $reason")
     }
 
@@ -146,6 +167,16 @@ class BentleyRemoteService : MediaSessionService() {
             setShowBadge(false)
         }
         notificationManager.createNotificationChannel(channel)
+
+        val connectionChannel = NotificationChannel(
+            CONNECTION_NOTIFICATION_CHANNEL_ID,
+            getString(R.string.connection_notification_channel_name),
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = getString(R.string.connection_notification_channel_description)
+            setShowBadge(false)
+        }
+        notificationManager.createNotificationChannel(connectionChannel)
 
         val notificationProvider = DefaultMediaNotificationProvider.Builder(this)
             .setChannelId(MEDIA_NOTIFICATION_CHANNEL_ID)
@@ -181,20 +212,52 @@ class BentleyRemoteService : MediaSessionService() {
         )
     }
 
+    private fun ensureConnectionForeground(status: String) {
+        val activityIntent = PendingIntent.getActivity(
+            this,
+            1,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notification = NotificationCompat.Builder(this, CONNECTION_NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_deskora_quick_tile)
+            .setContentTitle(getString(R.string.connection_notification_title))
+            .setContentText(status)
+            .setContentIntent(activityIntent)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                CONNECTION_NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
+            )
+        } else {
+            startForeground(CONNECTION_NOTIFICATION_ID, notification)
+        }
+    }
+
     companion object {
         private const val TAG = "BentleyRemoteService"
         private const val MEDIA_NOTIFICATION_CHANNEL_ID = "bentley_remote_media"
         private const val MEDIA_NOTIFICATION_ID = 1001
+        private const val CONNECTION_NOTIFICATION_CHANNEL_ID = "nimbmote_connection"
+        private const val CONNECTION_NOTIFICATION_ID = 1002
         private const val ACTION_TOGGLE_WINDOWS_MEDIA = "com.bentley.remote.action.TOGGLE_WINDOWS_MEDIA"
 
         fun start(context: Context) {
-            context.startService(Intent(context, BentleyRemoteService::class.java))
+            startService(context, Intent(context, BentleyRemoteService::class.java))
         }
 
         fun toggleWindowsMedia(context: Context) {
-            context.startService(
-                Intent(context, BentleyRemoteService::class.java).setAction(ACTION_TOGGLE_WINDOWS_MEDIA),
-            )
+            startService(context, Intent(context, BentleyRemoteService::class.java).setAction(ACTION_TOGGLE_WINDOWS_MEDIA))
+        }
+
+        private fun startService(context: Context, intent: Intent) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
+            else context.startService(intent)
         }
     }
 }

@@ -9,6 +9,7 @@ using BentleyRemote.Agent.Security;
 using BentleyRemote.Agent.SystemActions;
 using BentleyRemote.Agent.Desktop;
 using BentleyRemote.Agent.Delivery;
+using BentleyRemote.Agent.Diagnostics;
 
 namespace BentleyRemote.Agent.Core;
 
@@ -89,7 +90,7 @@ internal sealed class AgentCoordinator : IAsyncDisposable
                 try
                 {
                     await attempt.WaitAsync(StartupReadinessPolicy.MediaAttemptWindow, cancellationToken);
-                    Debug.WriteLine("[BentleyRemote] Windows media integration ready");
+                    DiagnosticsJournal.Write("agent", "Windows media integration ready");
                     return;
                 }
                 catch (TimeoutException)
@@ -141,7 +142,7 @@ internal sealed class AgentCoordinator : IAsyncDisposable
 
     private void RaiseStartupDiagnostic(string status)
     {
-        Debug.WriteLine($"[BentleyRemote] {status}");
+        DiagnosticsJournal.Write("agent", status);
         // Do not overwrite an authenticated-network status with an optional media warning.
         if (!IsConnected) SetStatus(false, status);
     }

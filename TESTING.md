@@ -1,5 +1,16 @@
 # Bentley Remote v0.3.0 - Galaxy A56 / One UI 8.5 test plan
 
+## v0.10.0 persistent reconnect and diagnostics — tomorrow's test
+
+- [ ] Update **both** artifacts over the existing installation. The saved pairing must remain intact.
+- [ ] Open NimbMote once, then leave the app. A quiet persistent notification says that NimbMote is ready or waiting to reconnect; it is a connection status, not a local audio player.
+- [ ] Leave Windows media paused for 10 minutes, without reopening the Android app. Start Windows media again, or exit and reopen the Windows agent: NimbMote should reconnect and restore its media/volume state without manually opening the phone app.
+- [ ] With the agent unavailable, the Quick Settings tile shows **NimbMote reconnect**. One tap must only wake/reconnect the phone service — it must not send a delayed Play/Pause that changes Windows media after reconnecting.
+- [ ] Once connected, the same tile reads **NimbMote Play/Pause** and a single tap controls Windows media normally.
+- [ ] Long-press the NimbMote Quick Settings tile: it opens NimbMote itself, not Android App info.
+- [ ] If a reconnect fails, open `⋮` on the computer card → **Connection diagnostics** → **Share diagnostics**. This is a user-initiated share sheet only; the app does not upload anything by itself. On Windows, tray → **Copy connection diagnostics** copies the matching local journal.
+- [ ] The shared journals must not contain pairing secrets, media titles, audio, screenshots, or protocol payloads.
+
 ## v0.4.1 Windows wallpaper preview
 
 - [ ] Install only `BentleyRemote-Setup-v0.4.1.exe`; keep Android v0.4.0.
@@ -78,8 +89,9 @@
   подтверждает шаг громкости 1% и состав power UI.
 - [ ] `android\gradlew.bat :app:assembleDebug` проходит с JDK 17 и SDK 35.
 - [ ] В APK manifest присутствуют INTERNET, POST_NOTIFICATIONS,
-  FOREGROUND_SERVICE и FOREGROUND_SERVICE_MEDIA_PLAYBACK. Boot receiver,
-  connectedDevice service, CHANGE_WIFI_STATE и RECEIVE_BOOT_COMPLETED отсутствуют.
+  FOREGROUND_SERVICE, FOREGROUND_SERVICE_MEDIA_PLAYBACK,
+  FOREGROUND_SERVICE_CONNECTED_DEVICE и CHANGE_WIFI_MULTICAST_STATE. Boot receiver,
+  CHANGE_WIFI_STATE и RECEIVE_BOOT_COMPLETED отсутствуют.
 - [ ] `protocol/examples/state.snapshot.json` читается обеими реализациями.
 - [ ] Windows console tests подтверждают install layout: Program Files path,
   единственное известное имя Run-value и legacy-value cleanup intent.

@@ -7,6 +7,11 @@
 - Publisher name for public materials: **Pink Electric**.
 - Android and Windows binaries are built and packaged for v0.9.0; checksums and verification notes are in `releases/v0.9.0/CHANGELOG.md` and `BUILD_STATUS.md`.
 
+## Local build toolchains
+
+- Use the repository's portable toolchains, not a system-wide installation: `../work/toolchains/jdk-17/jdk-17.0.20+8`, `../work/toolchains/android-sdk`, and `../work/toolchains/dotnet` relative to the `files-mentioned-by-the-user-bentley` workspace root.
+- `scripts/build-all.ps1` detects those paths and exports `JAVA_HOME`, `ANDROID_HOME`, `GRADLE_USER_HOME`, and the portable .NET executable automatically. Do not install another JDK merely because a fresh shell lacks `java` on `PATH`.
+
 ## What is working
 
 - Android remote controls the active Windows media session, playback timeline, Windows volume and mute.

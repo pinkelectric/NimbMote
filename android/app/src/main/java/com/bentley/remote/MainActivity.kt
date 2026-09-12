@@ -91,6 +91,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.FileProvider
 import com.bentley.remote.data.RemoteRepository
+import com.bentley.remote.diagnostics.ConnectionDiagnostics
 import com.bentley.remote.media.TimelinePredictor
 import com.bentley.remote.model.AppUiState
 import com.bentley.remote.service.BentleyRemoteService
@@ -154,6 +155,7 @@ private fun BentleyRemoteScreen() {
     var reverseHost by remember(state.reverseHost) { mutableStateOf(state.reverseHost) }
     var reverseEnabled by remember(state.reverseEnabled) { mutableStateOf(state.reverseEnabled) }
     var showConnectionSettings by remember { mutableStateOf(false) }
+    var showDiagnostics by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.connected) {
         if (state.connected) RemoteRepository.requestDesktopPreview()
@@ -178,6 +180,7 @@ private fun BentleyRemoteScreen() {
                     state = state,
                     onRefreshDesktop = RemoteRepository::requestDesktopPreview,
                     onOpenConnectionSettings = { showConnectionSettings = true },
+                    onShowDiagnostics = { showDiagnostics = true },
                 )
                 TestPackageCard(state = state)
                 MediaCard(state = state)
@@ -206,6 +209,9 @@ private fun BentleyRemoteScreen() {
             onApply = { RemoteRepository.updateReverse(context, reverseEnabled, reverseHost) },
             onDismiss = { showConnectionSettings = false },
         )
+    }
+    if (showDiagnostics) {
+        ConnectionDiagnosticsDialog(onDismiss = { showDiagnostics = false })
     }
 }
 
@@ -295,6 +301,7 @@ private fun ComputerCard(
     state: AppUiState,
     onRefreshDesktop: () -> Unit,
     onOpenConnectionSettings: () -> Unit,
+    onShowDiagnostics: () -> Unit,
 ) {
     var pendingAction by remember { mutableStateOf<PowerUiAction?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
@@ -397,6 +404,13 @@ private fun ComputerCard(
                                 onClick = {
                                     menuExpanded = false
                                     onOpenConnectionSettings()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.connection_diagnostics)) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onShowDiagnostics()
                                 },
                             )
                         }
@@ -770,6 +784,40 @@ private fun ConnectionSettingsDialog(
             TextButton(onClick = { onApply(); onDismiss() }) {
                 Text(stringResource(R.string.save))
             }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
+}
+
+@Composable
+private fun ConnectionDiagnosticsDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val report = remember { ConnectionDiagnostics.report(context) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.connection_diagnostics)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(stringResource(R.string.connection_diagnostics_explanation))
+                Text(report, style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                context.startActivity(
+                    Intent.createChooser(
+                        Intent(Intent.ACTION_SEND)
+                            .setType("text/plain")
+                            .putExtra(Intent.EXTRA_TEXT, report),
+                        context.getString(R.string.share_diagnostics),
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }) { Text(stringResource(R.string.share_diagnostics)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }

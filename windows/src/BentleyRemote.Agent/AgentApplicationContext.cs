@@ -1,4 +1,5 @@
 using BentleyRemote.Agent.Core;
+using BentleyRemote.Agent.Diagnostics;
 using BentleyRemote.Agent.Installation;
 using System.Reflection;
 
@@ -28,6 +29,7 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
             new ToolStripSeparator(),
             _pairItem,
             new ToolStripMenuItem("About / diagnostics…", null, AboutClicked),
+            new ToolStripMenuItem("Copy connection diagnostics", null, CopyDiagnosticsClicked),
             new ToolStripMenuItem("Copy hotspot gateways", null, CopyGatewaysClicked),
             new ToolStripSeparator(),
             new ToolStripMenuItem("Exit", null, ExitClicked)
@@ -89,6 +91,9 @@ internal sealed class AgentApplicationContext : ApplicationContext, IDisposable
         var text = gateways.Count == 0 ? "No IPv4 gateway detected" : string.Join(Environment.NewLine, gateways);
         Clipboard.SetText(text);
     }
+
+    private static void CopyDiagnosticsClicked(object? sender, EventArgs e) =>
+        Clipboard.SetText(DiagnosticsJournal.Read());
 
     private static void AboutClicked(object? sender, EventArgs e)
     {

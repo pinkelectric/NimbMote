@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using BentleyRemote.Agent.Protocol;
 using BentleyRemote.Agent.Security;
+using BentleyRemote.Agent.Diagnostics;
 
 namespace BentleyRemote.Agent.Networking;
 
@@ -563,7 +564,11 @@ internal sealed class ConnectionHub : IAsyncDisposable
         if (wasActive) RaiseConnection(false, "Disconnected; reconnecting automatically");
     }
 
-    private void RaiseConnection(bool connected, string status) => ConnectionChanged?.Invoke(connected, status);
+    private void RaiseConnection(bool connected, string status)
+    {
+        DiagnosticsJournal.Write("connection", $"{(connected ? "connected" : "disconnected")}: {status}");
+        ConnectionChanged?.Invoke(connected, status);
+    }
 
     private void RaiseDisconnectedStatus(string status)
     {
@@ -572,7 +577,7 @@ internal sealed class ConnectionHub : IAsyncDisposable
 
     private void Diagnostic(string message)
     {
-        Debug.WriteLine($"[BentleyRemote] {message}");
+        DiagnosticsJournal.Write("connection", message);
         RaiseDisconnectedStatus(message);
     }
 
