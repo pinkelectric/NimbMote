@@ -5,7 +5,7 @@
 ```mermaid
 flowchart LR
     Edge["Microsoft Edge / YouTube"] --> GSMTC["Windows GSMTC"]
-    GSMTC --> Agent["Bentley Remote tray agent"]
+    GSMTC --> Agent["NimbMote Windows tray agent"]
     CoreAudio["Windows Core Audio"] <--> Agent
     Agent -->|"default gateway:45892 / WebSocket"| Phone["Android transport service"]
 Phone <--> Player["Media3 remote SimpleBasePlayer"]

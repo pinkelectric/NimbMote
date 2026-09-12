@@ -2,6 +2,10 @@
 
 **A private Android remote for Windows media, volume, and power controls on your local Wi-Fi.**
 
+[Website](https://nimbmote.pinkelectric.workers.dev) · [Privacy](https://nimbmote.pinkelectric.workers.dev/privacy) · [Releases](releases/)
+
+![NimbMote shown as an Android phone beside a Windows monitor](public/og-nimbmote.png)
+
 NimbMote pairs one Android phone with one Windows computer. Once paired, the phone can control the active Windows media session, adjust Windows volume, show the current Windows wallpaper, and send sleep, lock, shutdown, or restart commands. It does not require an account, a cloud relay, analytics, or a browser extension.
 
 > **Public test release.** NimbMote is currently distributed as a Windows setup file and an Android test APK. The Android package is not yet in Google Play, so Android will ask for approval before installing it.
@@ -70,6 +74,10 @@ See [AGENTS.md](AGENTS.md) for repository and release rules, and [TESTING.md](TE
 ## Current public identity and compatibility
 
 The public product is **NimbMote**. Some implementation identifiers still use the former `BentleyRemote` / `Deskora` names so that v0.9.0 can update existing installations without forcing people to reinstall or pair devices again. Those identifiers are intentionally being changed only in a dedicated compatibility release before Google Play distribution.
+
+## Built with Codex
+
+NimbMote was developed iteratively with OpenAI Codex as the coding agent. Codex helped turn user-led hardware testing into changes across the Android client, Windows agent, local protocol, automated tests, installers, release artifacts, and documentation. NimbMote itself has no runtime dependency on an OpenAI model or API.
 
 ## License
 

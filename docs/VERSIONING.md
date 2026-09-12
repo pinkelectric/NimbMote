@@ -1,6 +1,6 @@
 # Versioning and releases
 
-Bentley Remote follows Semantic Versioning. The canonical version is stored in
+NimbMote follows Semantic Versioning. The canonical version is stored in
 the root `VERSION` file as `MAJOR.MINOR.PATCH`; Git tags add the `v` prefix.
 
 ## Version mapping
