@@ -26,12 +26,16 @@ The Android application ID, Windows executable, configuration folder, encrypted 
 
 Before a Google Play release, make one dedicated migration decision for the Android package ID. That release must clearly state whether it is a clean installation and whether users need to pair again.
 
-## Public-release cleanup in progress
+## Public release and Showcase
 
-1. Public repository renamed to `pinkelectric/NimbMote`; all new download links use the new repository. GitHub retains the old Deskora URL as a redirect.
-2. Static hosting build is ready for the marketing/download site, including a standalone privacy page. The public-site base URL is configurable through `NIMBMOTE_PUBLIC_SITE_URL` at build time.
-3. Create the Timeweb Cloud frontend in Almaty (Kazakhstan) from `main` with `npm run build:static` and `/dist/client`, then set `NIMBMOTE_PUBLIC_SITE_URL` to its technical URL. Keep Cloudflare as a development or backup deployment only.
-4. After the Timeweb URL is live, validate the public site, metadata preview, downloads and privacy link, then prepare English Showcase submission material: hosted URL, public repository, short setup instructions, cover image, and an accurate statement that Codex was used to build the project.
+1. The public repository is `pinkelectric/NimbMote`; v0.10.1 and its release tags are published there.
+2. The marketing/download site and standalone privacy page are live on Cloudflare. The public-site base URL remains configurable through `NIMBMOTE_PUBLIC_SITE_URL`.
+3. A non-Cloudflare mirror remains optional for easier access from Russia. Timeweb is deferred because its minimum account deposit is disproportionate to the current test traffic.
+4. OpenAI Showcase materials are prepared in `docs/OPENAI_SHOWCASE_SUBMISSION.md`; the project fields are filled in the official form, while the submitter must add personal contact fields, accept the agreement, and submit it.
+
+## Roadmap decision
+
+The next security iteration is a release gate before biometric Windows control or sign-in. It must encrypt the complete local session, harden pairing and revocation, and add adversarial protocol tests. The ordered plan and acceptance criteria are in `docs/ROADMAP.md`.
 
 ## Known risks and next real-device checks
 
