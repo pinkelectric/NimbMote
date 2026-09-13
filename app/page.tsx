@@ -18,9 +18,9 @@ import {
 import { Button } from '@/components/ui/button';
 
 const windowsDownload =
-  'https://github.com/pinkelectric/NimbMote/raw/main/releases/v0.9.0/NimbMote-Setup-v0.9.0.exe';
+  'https://github.com/pinkelectric/NimbMote/raw/main/releases/v0.10.1/NimbMote-Setup-v0.10.1.exe';
 const androidDownload =
-  'https://github.com/pinkelectric/NimbMote/raw/main/releases/v0.9.0/NimbMote-v0.9.0-debug.apk';
+  'https://github.com/pinkelectric/NimbMote/raw/main/releases/v0.10.1/NimbMote-v0.10.1-debug.apk';
 
 const features = [
   { icon: Music2, title: 'Media, where you need it', text: 'Play, pause, skip, seek and see the artwork from your Windows media session.' },
@@ -79,8 +79,8 @@ export default function Home() {
       <section className="download-section" id="downloads">
         <div><p className="eyebrow"><span /> First public test</p><h2>Try NimbMote today.</h2><p>Install the agent first, then the Android test build. The Android package is not yet distributed by Google Play, so Android will ask for your approval to install it.</p></div>
         <div className="download-cards">
-          <a className="download-card" href={windowsDownload} download><span className="download-icon windows"><MonitorSmartphone /></span><span><strong>NimbMote Agent</strong><small>Windows 10 / 11 · v0.9.0</small></span><Download /></a>
-          <a className="download-card" href={androidDownload} download><span className="download-icon android"><Smartphone /></span><span><strong>NimbMote for Android</strong><small>Test APK · v0.9.0</small></span><Download /></a>
+          <a className="download-card" href={windowsDownload} download><span className="download-icon windows"><MonitorSmartphone /></span><span><strong>NimbMote Agent</strong><small>Windows 10 / 11 · v0.10.1</small></span><Download /></a>
+          <a className="download-card" href={androidDownload} download><span className="download-icon android"><Smartphone /></span><span><strong>NimbMote for Android</strong><small>Test APK · v0.10.1</small></span><Download /></a>
         </div>
       </section>
 

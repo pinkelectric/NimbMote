@@ -84,6 +84,6 @@ The submitter must personally provide these fields and accept the agreement:
 - Personal website or social profile (optional)
 - Agreement attestation
 
-## Final release check
+## Release used for submission
 
-The public site currently offers the hardware-tested v0.9.0 build. The repository contains v0.10.1 locally, but that release should replace v0.9.0 on the public site only after its Android media-card repair is confirmed on a real phone and the release commits are pushed.
+The public site and repository offer the hardware-tested v0.10.1 build. Its Android media-card repair and reconnect behavior were confirmed on a real phone before publication.
